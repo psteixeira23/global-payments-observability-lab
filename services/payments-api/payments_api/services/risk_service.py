@@ -28,9 +28,7 @@ class RiskRule(Protocol):
 class RiskReadRepository(Protocol):
     def count_failures_since(self, customer_id: str, since: datetime) -> Awaitable[int]: ...
 
-    def destination_seen(
-        self, customer_id: str, destination: str | None
-    ) -> Awaitable[bool]: ...
+    def destination_seen(self, customer_id: str, destination: str | None) -> Awaitable[bool]: ...
 
 
 class AmountNearMaxRule:

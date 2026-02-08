@@ -21,9 +21,7 @@ class FinalizePaymentCommand:
             provider=provider,
             provider_reference=provider_reference,
         ).model_dump(mode="json")
-        self._outbox_repository.emit_event(
-            payment.payment_id, EventType.PAYMENT_CONFIRMED, payload
-        )
+        self._outbox_repository.emit_event(payment.payment_id, EventType.PAYMENT_CONFIRMED, payload)
 
     async def fail(self, payment: PaymentORM, provider: str, category: str, reason: str) -> None:
         await self._payment_repository.mark_failed(payment, reason)
@@ -34,6 +32,4 @@ class FinalizePaymentCommand:
             error_category=category,
             reason=reason,
         ).model_dump(mode="json")
-        self._outbox_repository.emit_event(
-            payment.payment_id, EventType.PAYMENT_FAILED, payload
-        )
+        self._outbox_repository.emit_event(payment.payment_id, EventType.PAYMENT_FAILED, payload)

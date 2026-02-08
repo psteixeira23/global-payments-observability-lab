@@ -26,7 +26,9 @@ class FakePaymentRepo:
         await asyncio.sleep(0)
         return self._failures
 
-    async def destination_seen(self, customer_id: str, destination: str | None) -> bool:  # noqa: ARG002
+    async def destination_seen(
+        self, customer_id: str, destination: str | None
+    ) -> bool:  # noqa: ARG002
         await asyncio.sleep(0)
         return self._destination_seen
 
