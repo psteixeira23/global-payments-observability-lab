@@ -4,16 +4,33 @@ import time
 from collections.abc import Awaitable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import TypeVar
+from typing import Protocol, TypeVar
 
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
-from payments_api.repositories.payment_repository import PaymentRepository
 from shared.constants import AML_HISTORY_MAX_ITEMS, aml_history_key
 from shared.contracts import AmlDecision, LimitsPolicyDTO, PaymentMethod
 
 RedisResult = TypeVar("RedisResult")
+
+
+class AmlReadRepository(Protocol):
+    def sum_outgoing_since(
+        self,
+        customer_id: str,
+        rail: PaymentMethod,
+        since: datetime,
+    ) -> Awaitable[Decimal]: ...
+
+    def count_near_threshold_since(
+        self,
+        customer_id: str,
+        rail: PaymentMethod,
+        since: datetime,
+        low_amount: Decimal,
+        high_amount: Decimal,
+    ) -> Awaitable[int]: ...
 
 
 class AmlRuleEngine:
@@ -36,7 +53,7 @@ class AmlRuleEngine:
 
     async def evaluate(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: AmlReadRepository,
         *,
         customer_id: str,
         rail: PaymentMethod,
@@ -78,7 +95,7 @@ class AmlRuleEngine:
 
     async def _total_outgoing_recent(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: AmlReadRepository,
         customer_id: str,
         rail: PaymentMethod,
     ) -> Decimal:
@@ -93,7 +110,7 @@ class AmlRuleEngine:
 
     async def _near_threshold_count(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: AmlReadRepository,
         customer_id: str,
         rail: PaymentMethod,
         max_amount: Decimal,

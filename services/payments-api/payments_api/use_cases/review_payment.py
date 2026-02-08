@@ -60,12 +60,12 @@ class ApproveReviewPaymentUseCase(BaseReviewPaymentUseCase):
 
             await payments.update_status(payment_id, PaymentStatus.RECEIVED)
             outbox = OutboxRepository(session)
-            await self._enqueue_payment_requested(outbox, payment_id, payment.merchant_id)
+            self._enqueue_payment_requested(outbox, payment_id, payment.merchant_id)
             await session.commit()
             await self._record_review_queue_size(payments)
             return self._build_review_response(payment_id, PaymentStatus.RECEIVED, payment)
 
-    async def _enqueue_payment_requested(
+    def _enqueue_payment_requested(
         self, outbox: OutboxRepository, payment_id: UUID, merchant_id: str
     ) -> None:
         payload = PaymentRequestedPayload(
@@ -74,7 +74,7 @@ class ApproveReviewPaymentUseCase(BaseReviewPaymentUseCase):
             trace_id=current_trace_id(),
             traceparent=current_traceparent(),
         ).model_dump(mode="json")
-        await outbox.add_event(
+        outbox.add_event(
             aggregate_id=payment_id,
             event_type=EventType.PAYMENT_REQUESTED,
             payload=payload,

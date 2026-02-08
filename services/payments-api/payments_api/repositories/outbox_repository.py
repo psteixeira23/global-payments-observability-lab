@@ -11,9 +11,7 @@ class OutboxRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def add_event(
-        self, *, aggregate_id: UUID, event_type: EventType, payload: dict
-    ) -> OutboxEventORM:
+    def add_event(self, *, aggregate_id: UUID, event_type: EventType, payload: dict) -> OutboxEventORM:
         event = OutboxEventORM(
             aggregate_id=aggregate_id,
             event_type=event_type,

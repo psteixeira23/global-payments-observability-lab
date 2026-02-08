@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from payments_api.core.errors import RateLimitedError
 from payments_api.services.rate_limiter_service import RateLimiterService
@@ -10,11 +12,13 @@ class FakeRedis:
         self._values: dict[str, int] = {}
 
     async def incr(self, key: str) -> int:
+        await asyncio.sleep(0)
         value = self._values.get(key, 0) + 1
         self._values[key] = value
         return value
 
     async def expire(self, key: str, ttl: int) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         return True
 
 

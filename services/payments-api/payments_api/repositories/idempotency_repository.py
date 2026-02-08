@@ -22,7 +22,7 @@ class IdempotencyRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_snapshot(
+    def create_snapshot(
         self,
         *,
         merchant_id: str,

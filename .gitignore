@@ -1,40 +1,52 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
 *.egg-info/
+.eggs/
 
 # Virtual environments
 .venv/
 venv/
 .python-version
+__pypackages__/
 
 # Tool caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
 .cache/
 
 # Coverage
 .coverage
 .coverage.*
-htmlcov/
 coverage.xml
+htmlcov/
+pytestdebug.log
 
 # Local environment files
 .env
 .env.*
 !.env.example
+.envrc
 
 # IDE / OS
 .idea/
 .vscode/
 .DS_Store
+*.swp
 
 # Runtime artifacts
 *.log
 *.pid
 *.out
+logs/
+tmp/
 
 # Build / packaging artifacts
 build/
@@ -44,3 +56,10 @@ pip-wheel-metadata/
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Local databases
+*.sqlite3
+*.db
+
+# Load test outputs
+scripts/loadtest/results/

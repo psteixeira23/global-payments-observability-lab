@@ -12,7 +12,7 @@ _GENERIC_INTERNAL_ERROR_MESSAGE = "Internal server error"
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
-    async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+    def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
         logger.warning(
             "application_error", extra={"extra_fields": {"error_category": exc.category.value}}
         )
@@ -22,7 +22,7 @@ def register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
+    def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
         logger.exception(
             "unexpected_error", extra={"extra_fields": {"error_category": "unexpected"}}
         )

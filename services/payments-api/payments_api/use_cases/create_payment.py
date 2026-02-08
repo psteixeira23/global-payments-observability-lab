@@ -35,7 +35,7 @@ from payments_api.repositories.customer_repository import CustomerRepository
 from payments_api.repositories.idempotency_repository import IdempotencyRepository
 from payments_api.repositories.limits_policy_repository import LimitsPolicyRepository
 from payments_api.repositories.outbox_repository import OutboxRepository
-from payments_api.repositories.payment_repository import PaymentRepository
+from payments_api.repositories.payment_repository import PaymentCreateData, PaymentRepository
 from payments_api.services.aml_service import AmlRuleEngine
 from payments_api.services.idempotency_service import IdempotencyService
 from payments_api.services.kyc_service import KycService
@@ -394,14 +394,14 @@ class CreatePaymentUseCase:
         response_payload: PaymentAcceptedResponse,
     ) -> PaymentAcceptedResponse | None:
         try:
-            await self._persist_payment_and_outbox(
+            self._persist_payment_and_outbox(
                 repositories,
                 request_context,
                 request,
                 control_decision,
                 response_payload,
             )
-            await repositories.idempotency.create_snapshot(
+            repositories.idempotency.create_snapshot(
                 merchant_id=request_context.merchant_id,
                 idempotency_key=request_context.idempotency_key,
                 payment_id=response_payload.payment_id,
@@ -436,7 +436,7 @@ class CreatePaymentUseCase:
             return None
         return self._build_response_from_existing_payment(existing)
 
-    async def _persist_payment_and_outbox(
+    def _persist_payment_and_outbox(
         self,
         repositories: RepositoryBundle,
         request_context: RequestContext,
@@ -444,25 +444,27 @@ class CreatePaymentUseCase:
         control_decision: ControlDecision,
         response_payload: PaymentAcceptedResponse,
     ) -> None:
-        await repositories.payment.create_payment(
-            payment_id=response_payload.payment_id,
-            merchant_id=request_context.merchant_id,
-            customer_id=request_context.customer_id,
-            account_id=request_context.account_id,
-            amount=request.amount,
-            currency=request.currency,
-            method=request.method,
-            destination=request.destination,
-            status=response_payload.status,
-            idempotency_key=request_context.idempotency_key,
-            risk_score=control_decision.risk_score,
-            risk_decision=control_decision.risk_decision,
-            aml_decision=control_decision.aml_decision,
-            metadata=request.metadata,
+        repositories.payment.create_payment(
+            PaymentCreateData(
+                payment_id=response_payload.payment_id,
+                merchant_id=request_context.merchant_id,
+                customer_id=request_context.customer_id,
+                account_id=request_context.account_id,
+                amount=request.amount,
+                currency=request.currency,
+                method=request.method,
+                destination=request.destination,
+                status=response_payload.status,
+                idempotency_key=request_context.idempotency_key,
+                risk_score=control_decision.risk_score,
+                risk_decision=control_decision.risk_decision,
+                aml_decision=control_decision.aml_decision,
+                metadata=request.metadata,
+            )
         )
-        await self._persist_outbox_events(repositories.outbox, request_context, response_payload)
+        self._persist_outbox_events(repositories.outbox, request_context, response_payload)
 
-    async def _persist_outbox_events(
+    def _persist_outbox_events(
         self,
         outbox_repository: OutboxRepository,
         request_context: RequestContext,
@@ -475,7 +477,7 @@ class CreatePaymentUseCase:
                 trace_id=current_trace_id(),
                 traceparent=current_traceparent(),
             ).model_dump(mode="json")
-            await outbox_repository.add_event(
+            outbox_repository.add_event(
                 aggregate_id=response_payload.payment_id,
                 event_type=EventType.PAYMENT_REQUESTED,
                 payload=payload,
@@ -488,7 +490,7 @@ class CreatePaymentUseCase:
                 merchant_id=request_context.merchant_id,
                 reason=ReviewReason.RISK_OR_AML_REVIEW.value,
             ).model_dump(mode="json")
-            await outbox_repository.add_event(
+            outbox_repository.add_event(
                 aggregate_id=response_payload.payment_id,
                 event_type=EventType.PAYMENT_REVIEW_REQUIRED,
                 payload=review_payload,

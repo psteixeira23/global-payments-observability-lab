@@ -64,5 +64,5 @@ async def telemetry_middleware(
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+def health() -> dict[str, str]:
     return {"status": "ok"}

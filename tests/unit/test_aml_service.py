@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import time
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -9,34 +11,49 @@ from payments_api.services.aml_service import AmlRuleEngine
 from shared.contracts import AmlDecision, LimitsPolicyDTO, PaymentMethod
 
 
+async def _yield_control() -> None:
+    await asyncio.sleep(0)
+
+
 class FakeRedis:
     def __init__(self, entries: list[str]) -> None:
         self._entries = entries
 
-    async def lrange(self, key: str, start: int, end: int):  # noqa: ARG002
+    async def lrange(self, key: str, start: int, end: int) -> list[str]:  # noqa: ARG002
+        await _yield_control()
         return self._entries
 
-    async def lpush(self, key: str, payload: str):  # noqa: ARG002
+    async def lpush(self, key: str, payload: str) -> int:  # noqa: ARG002
+        await _yield_control()
         self._entries.insert(0, payload)
         return len(self._entries)
 
-    async def ltrim(self, key: str, start: int, end: int):  # noqa: ARG002
+    async def ltrim(self, key: str, start: int, end: int) -> bool:  # noqa: ARG002
+        await _yield_control()
         self._entries = self._entries[start : end + 1]
         return True
 
-    async def expire(self, key: str, ttl: int):  # noqa: ARG002
+    async def expire(self, key: str, ttl: int) -> bool:  # noqa: ARG002
+        await _yield_control()
         return True
 
 
 class FakePaymentRepo:
     async def sum_outgoing_since(
-        self, customer_id: str, rail: PaymentMethod, since
-    ):  # noqa: ANN001, ARG002
+        self, customer_id: str, rail: PaymentMethod, since: datetime
+    ) -> Decimal:  # noqa: ARG002
+        await _yield_control()
         return Decimal("0")
 
     async def count_near_threshold_since(
-        self, customer_id: str, rail: PaymentMethod, since, low_amount, high_amount
-    ):  # noqa: ANN001, ARG002
+        self,
+        customer_id: str,
+        rail: PaymentMethod,
+        since: datetime,
+        low_amount: Decimal,
+        high_amount: Decimal,
+    ) -> int:  # noqa: ARG002
+        await _yield_control()
         return 0
 
 

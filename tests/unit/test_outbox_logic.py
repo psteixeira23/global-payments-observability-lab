@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from decimal import Decimal
 from types import SimpleNamespace
@@ -29,6 +30,7 @@ class FakeSession:
         self.commits = 0
 
     async def commit(self) -> None:
+        await asyncio.sleep(0)
         self.commits += 1
 
 
@@ -40,9 +42,11 @@ class FakeSessionFactory:
         return self
 
     async def __aenter__(self):
+        await asyncio.sleep(0)
         return self._session
 
     async def __aexit__(self, exc_type, exc, tb):  # noqa: ANN001
+        await asyncio.sleep(0)
         return False
 
 
@@ -62,24 +66,30 @@ class FakeOutboxRepository:
         self.sent: list[object] = []
 
     async def backlog_size(self) -> int:
+        await asyncio.sleep(0)
         return len(self.pending)
 
     async def oldest_pending_lag_seconds(self) -> float:
+        await asyncio.sleep(0)
         return 0.1
 
     async def fetch_pending_requested(self, limit: int):  # noqa: ARG002
+        await asyncio.sleep(0)
         return self.pending
 
     async def mark_sent(self, event_id):  # noqa: ANN001
+        await asyncio.sleep(0)
         self.sent.append(event_id)
 
     async def mark_failed(self, event_id, attempts):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         self.sent.append(event_id)
 
     async def reschedule(self, event_id, attempts, delay_seconds):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         self.sent.append(event_id)
 
-    async def emit_event(self, aggregate_id, event_type, payload):  # noqa: ANN001
+    def emit_event(self, aggregate_id, event_type, payload):  # noqa: ANN001
         self.events.append((aggregate_id, event_type, payload))
 
 
@@ -88,20 +98,25 @@ class FakePaymentRepository:
         self.payment = PAYMENT
 
     async def get_by_id(self, payment_id):  # noqa: ANN001
+        await asyncio.sleep(0)
         return self.payment if payment_id == self.payment.payment_id else None
 
     async def mark_processing(self, payment):  # noqa: ANN001
+        await asyncio.sleep(0)
         return payment.payment_id == self.payment.payment_id
 
     async def mark_confirmed(self, payment):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         return True
 
     async def mark_failed(self, payment, reason):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         return True
 
 
 class FakeProviderCommand:
     async def execute(self, payment):  # noqa: ANN001
+        await asyncio.sleep(0)
         return ProviderResponse(
             provider_reference=f"pix-{payment.payment_id}",
             confirmed=True,

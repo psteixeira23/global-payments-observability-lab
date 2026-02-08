@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from shared.resilience.backoff import exponential_backoff
@@ -23,6 +25,7 @@ async def test_retry_async_retries_until_success() -> None:
     attempts = 0
 
     async def operation() -> str:
+        await asyncio.sleep(0)
         nonlocal attempts
         attempts += 1
         if attempts < 3:
@@ -40,6 +43,7 @@ async def test_retry_async_retries_until_success() -> None:
 @pytest.mark.asyncio
 async def test_retry_async_stops_for_non_retryable_error() -> None:
     async def operation() -> str:
+        await asyncio.sleep(0)
         raise RuntimeError("fatal")
 
     with pytest.raises(RuntimeError):

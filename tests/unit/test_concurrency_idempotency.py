@@ -47,9 +47,10 @@ class FakeIdempotencyRepository:
         self.snapshot: SnapshotRecord | None = None
 
     async def get_snapshot(self, merchant_id: str, idempotency_key: str):  # noqa: ARG002
+        await asyncio.sleep(0)
         return self.snapshot
 
-    async def create_snapshot(self, **kwargs):  # noqa: ANN003
+    def create_snapshot(self, **kwargs):  # noqa: ANN003
         self.snapshot = SnapshotRecord(response_payload=kwargs["response_payload"])
         return self.snapshot
 
@@ -62,6 +63,7 @@ class FakePaymentRepository:
     async def get_by_merchant_and_idempotency(
         self, merchant_id: str, idempotency_key: str
     ):  # noqa: ARG002
+        await asyncio.sleep(0)
         if not self.payment_id:
             return None
         return SimpleNamespace(
@@ -71,37 +73,43 @@ class FakePaymentRepository:
             aml_decision=AmlDecision.ALLOW,
         )
 
-    async def create_payment(self, **kwargs):  # noqa: ANN003
-        self.payment_id = kwargs["payment_id"]
-        return kwargs
+    def create_payment(self, payment_data):  # noqa: ANN001
+        self.payment_id = payment_data.payment_id
+        return payment_data
 
     async def count_in_review(self) -> int:
+        await asyncio.sleep(0)
         return 0
 
-    async def count_failures_since(self, customer_id: str, since):  # noqa: ANN001, ARG002
+    async def count_failures_since(self, customer_id: str, since: datetime):  # noqa: ARG002
+        await asyncio.sleep(0)
         return 0
 
-    async def destination_seen(self, customer_id: str, destination):  # noqa: ANN001, ARG002
+    async def destination_seen(self, customer_id: str, destination: str | None) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         return True
 
     async def sum_outgoing_since(
-        self, customer_id: str, rail: PaymentMethod, since
-    ):  # noqa: ANN001, ARG002
+        self, customer_id: str, rail: PaymentMethod, since: datetime
+    ) -> Decimal:  # noqa: ARG002
+        await asyncio.sleep(0)
         return Decimal("0")
 
     async def count_outgoing_since(
-        self, customer_id: str, rail: PaymentMethod, since
-    ):  # noqa: ANN001, ARG002
+        self, customer_id: str, rail: PaymentMethod, since: datetime
+    ) -> int:  # noqa: ARG002
+        await asyncio.sleep(0)
         return 0
 
 
 class FakeOutboxRepository:
-    async def add_event(self, **kwargs):  # noqa: ANN003
+    def add_event(self, **kwargs):  # noqa: ANN003
         return kwargs
 
 
 class FakeCustomerRepository:
     async def get_by_id(self, customer_id: str):  # noqa: ARG002
+        await asyncio.sleep(0)
         return SimpleNamespace(
             customer_id="customer-1",
             kyc_level=KycLevel.BASIC,
@@ -117,18 +125,22 @@ class FakeLimitsRepository:
 class FakeSessionFactory:
     class _Session:
         async def commit(self) -> None:
+            await asyncio.sleep(0)
             return None
 
         async def rollback(self) -> None:
+            await asyncio.sleep(0)
             return None
 
     def __call__(self):
         return self
 
     async def __aenter__(self):
+        await asyncio.sleep(0)
         return self._Session()
 
     async def __aexit__(self, exc_type, exc, tb):  # noqa: ANN001
+        await asyncio.sleep(0)
         return False
 
 
@@ -136,6 +148,7 @@ class FakeRateLimiter:
     async def enforce(
         self, merchant_id: str, customer_id: str, account_id: str
     ) -> None:  # noqa: ARG002
+        await asyncio.sleep(0)
         return None
 
 
@@ -149,6 +162,7 @@ class FakeLimitsService:
         rail: PaymentMethod,
         amount: Decimal,
     ):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         return SimpleNamespace(
             policy=LimitsPolicyDTO(
                 rail=rail,
@@ -166,6 +180,7 @@ class FakeRiskService:
     async def evaluate(
         self, payment_repository, *, customer, amount, policy, velocity_count, destination
     ):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         return 10, RiskDecision.ALLOW
 
 
@@ -173,11 +188,13 @@ class FakeAmlEngine:
     async def evaluate(
         self, payment_repository, *, customer_id, rail, amount, destination, policy
     ):  # noqa: ANN001, ARG002
+        await asyncio.sleep(0)
         return AmlDecision.ALLOW
 
     async def record_outgoing(
         self, customer_id: str, rail: PaymentMethod, amount: Decimal
     ) -> None:  # noqa: ARG002
+        await asyncio.sleep(0)
         return None
 
 

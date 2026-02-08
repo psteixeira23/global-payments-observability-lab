@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from payments_api.services.idempotency_service import IdempotencyService
 from redis.exceptions import RedisError
@@ -11,6 +13,7 @@ class FakeRedis:
         self._seen: set[str] = set()
 
     async def set(self, key: str, value: str, ex: int, nx: bool) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         if self._should_fail:
             raise RedisError("redis down")
         if key in self._seen:

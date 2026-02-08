@@ -1,13 +1,33 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.contracts import AmlDecision, PaymentMethod, PaymentORM, PaymentStatus, RiskDecision
+
+
+@dataclass(frozen=True)
+class PaymentCreateData:
+    payment_id: UUID
+    merchant_id: str
+    customer_id: str
+    account_id: str
+    amount: Decimal
+    currency: str
+    method: PaymentMethod
+    destination: str | None
+    status: PaymentStatus
+    idempotency_key: str
+    risk_score: int
+    risk_decision: RiskDecision
+    aml_decision: AmlDecision
+    metadata: dict[str, Any] | None
 
 
 class PaymentRepository:
@@ -29,39 +49,22 @@ class PaymentRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_payment(
-        self,
-        *,
-        payment_id: UUID,
-        merchant_id: str,
-        customer_id: str,
-        account_id: str,
-        amount: Decimal,
-        currency: str,
-        method: PaymentMethod,
-        destination: str | None,
-        status: PaymentStatus,
-        idempotency_key: str,
-        risk_score: int,
-        risk_decision: RiskDecision,
-        aml_decision: AmlDecision,
-        metadata: dict | None,
-    ) -> PaymentORM:
+    def create_payment(self, payment_data: PaymentCreateData) -> PaymentORM:
         entity = PaymentORM(
-            payment_id=payment_id,
-            merchant_id=merchant_id,
-            customer_id=customer_id,
-            account_id=account_id,
-            amount=amount,
-            currency=currency,
-            method=method,
-            destination=destination,
-            status=status,
-            idempotency_key=idempotency_key,
-            risk_score=risk_score,
-            risk_decision=risk_decision,
-            aml_decision=aml_decision,
-            metadata_json=metadata,
+            payment_id=payment_data.payment_id,
+            merchant_id=payment_data.merchant_id,
+            customer_id=payment_data.customer_id,
+            account_id=payment_data.account_id,
+            amount=payment_data.amount,
+            currency=payment_data.currency,
+            method=payment_data.method,
+            destination=payment_data.destination,
+            status=payment_data.status,
+            idempotency_key=payment_data.idempotency_key,
+            risk_score=payment_data.risk_score,
+            risk_decision=payment_data.risk_decision,
+            aml_decision=payment_data.aml_decision,
+            metadata_json=payment_data.metadata,
         )
         self._session.add(entity)
         return entity
@@ -116,9 +119,13 @@ class PaymentRepository:
     async def destination_seen(self, customer_id: str, destination: str | None) -> bool:
         if not destination:
             return False
-        stmt = select(PaymentORM.payment_id).where(
-            PaymentORM.customer_id == customer_id,
-            PaymentORM.destination == destination,
+        stmt = (
+            select(PaymentORM.payment_id)
+            .where(
+                PaymentORM.customer_id == customer_id,
+                PaymentORM.destination == destination,
+            )
+            .limit(1)
         )
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none() is not None

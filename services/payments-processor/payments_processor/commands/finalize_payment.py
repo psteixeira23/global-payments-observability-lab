@@ -21,7 +21,7 @@ class FinalizePaymentCommand:
             provider=provider,
             provider_reference=provider_reference,
         ).model_dump(mode="json")
-        await self._outbox_repository.emit_event(
+        self._outbox_repository.emit_event(
             payment.payment_id, EventType.PAYMENT_CONFIRMED, payload
         )
 
@@ -34,6 +34,6 @@ class FinalizePaymentCommand:
             error_category=category,
             reason=reason,
         ).model_dump(mode="json")
-        await self._outbox_repository.emit_event(
+        self._outbox_repository.emit_event(
             payment.payment_id, EventType.PAYMENT_FAILED, payload
         )

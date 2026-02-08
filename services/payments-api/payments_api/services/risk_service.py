@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Protocol
 
-from payments_api.repositories.payment_repository import PaymentRepository
 from shared.contracts import CustomerORM, KycLevel, LimitsPolicyDTO, RiskDecision
 
 
@@ -23,6 +23,14 @@ class RiskContext:
 
 class RiskRule(Protocol):
     def score(self, context: RiskContext) -> int: ...
+
+
+class RiskReadRepository(Protocol):
+    def count_failures_since(self, customer_id: str, since: datetime) -> Awaitable[int]: ...
+
+    def destination_seen(
+        self, customer_id: str, destination: str | None
+    ) -> Awaitable[bool]: ...
 
 
 class AmountNearMaxRule:
@@ -76,7 +84,7 @@ class RiskScoreService:
 
     async def evaluate(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: RiskReadRepository,
         *,
         customer: CustomerORM,
         amount: Decimal,

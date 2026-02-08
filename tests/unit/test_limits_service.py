@@ -17,6 +17,7 @@ class FakeLimitsPolicyRepo:
     policy: LimitsPolicyORM
 
     async def get_by_rail(self, rail: PaymentMethod) -> LimitsPolicyORM | None:  # noqa: ARG002
+        await asyncio.sleep(0)
         return self.policy
 
 
@@ -24,11 +25,13 @@ class FakePaymentRepo:
     async def sum_outgoing_since(
         self, customer_id: str, rail: PaymentMethod, since: datetime
     ) -> Decimal:  # noqa: ARG002
+        await asyncio.sleep(0)
         return Decimal("0")
 
     async def count_outgoing_since(
         self, customer_id: str, rail: PaymentMethod, since: datetime
     ) -> int:  # noqa: ARG002
+        await asyncio.sleep(0)
         return 0
 
 
@@ -39,9 +42,11 @@ class FakeRedis:
         self._lock = asyncio.Lock()
 
     async def get(self, key: str) -> str | None:
+        await asyncio.sleep(0)
         return self._kv.get(key)
 
     async def set(self, key: str, value: str, ex: int | None = None) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         self._kv[key] = value
         return True
 
@@ -68,6 +73,7 @@ class FakeRedis:
             return len(mapping)
 
     async def expire(self, key: str, ttl: int) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         return True
 
 

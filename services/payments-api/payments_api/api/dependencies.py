@@ -20,15 +20,15 @@ from payments_api.use_cases.review_payment import (
 )
 
 
-async def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
+def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
     return request.app.state.session_factory
 
 
-async def get_redis_client(request: Request) -> Redis:
+def get_redis_client(request: Request) -> Redis:
     return request.app.state.redis_client
 
 
-async def get_create_payment_use_case(
+def get_create_payment_use_case(
     request: Request,
     session_factory: Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)],
     redis_client: Annotated[Redis, Depends(get_redis_client)],
@@ -63,19 +63,19 @@ async def get_create_payment_use_case(
     )
 
 
-async def get_get_payment_use_case(
+def get_get_payment_use_case(
     session_factory: Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)],
 ) -> GetPaymentUseCase:
     return GetPaymentUseCase(session_factory)
 
 
-async def get_approve_review_use_case(
+def get_approve_review_use_case(
     session_factory: Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)],
 ) -> ApproveReviewPaymentUseCase:
     return ApproveReviewPaymentUseCase(session_factory)
 
 
-async def get_reject_review_use_case(
+def get_reject_review_use_case(
     session_factory: Annotated[async_sessionmaker[AsyncSession], Depends(get_session_factory)],
 ) -> RejectReviewPaymentUseCase:
     return RejectReviewPaymentUseCase(session_factory)

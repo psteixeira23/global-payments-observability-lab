@@ -8,13 +8,13 @@ def test_testcontainers_smoke() -> None:
     postgres_module = pytest.importorskip("testcontainers.postgres")
     redis_module = pytest.importorskip("testcontainers.redis")
 
-    PostgresContainer = postgres_module.PostgresContainer
-    RedisContainer = redis_module.RedisContainer
+    postgres_container_cls = postgres_module.PostgresContainer
+    redis_container_cls = redis_module.RedisContainer
 
     try:
         with (
-            PostgresContainer("postgres:16-alpine") as postgres,
-            RedisContainer("redis:7-alpine") as redis,
+            postgres_container_cls("postgres:16-alpine") as postgres,
+            redis_container_cls("redis:7-alpine") as redis,
         ):
             assert "postgresql://" in postgres.get_connection_url()
             assert redis.get_container_host_ip()

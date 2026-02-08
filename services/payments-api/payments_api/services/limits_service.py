@@ -1,25 +1,45 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Awaitable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Protocol
 
 from pydantic import ValidationError
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from payments_api.core.errors import LimitExceededError, ValidationAppError
-from payments_api.repositories.limits_policy_repository import LimitsPolicyRepository
-from payments_api.repositories.payment_repository import PaymentRepository
 from shared.constants import limits_daily_key, limits_policy_key, limits_velocity_key
-from shared.contracts import LimitsPolicyDTO, PaymentMethod
+from shared.contracts import LimitsPolicyDTO, LimitsPolicyORM, PaymentMethod
 
 
 @dataclass
 class LimitsEvaluation:
     policy: LimitsPolicyDTO
     velocity_count: int
+
+
+class LimitsPaymentReadRepository(Protocol):
+    def sum_outgoing_since(
+        self,
+        customer_id: str,
+        rail: PaymentMethod,
+        since: datetime,
+    ) -> Awaitable[Decimal]: ...
+
+    def count_outgoing_since(
+        self,
+        customer_id: str,
+        rail: PaymentMethod,
+        since: datetime,
+    ) -> Awaitable[int]: ...
+
+
+class LimitsPolicyReadRepository(Protocol):
+    def get_by_rail(self, rail: PaymentMethod) -> Awaitable[LimitsPolicyORM | None]: ...
 
 
 class LimitsService:
@@ -29,8 +49,8 @@ class LimitsService:
 
     async def enforce(
         self,
-        payment_repository: PaymentRepository,
-        policy_repository: LimitsPolicyRepository,
+        payment_repository: LimitsPaymentReadRepository,
+        policy_repository: LimitsPolicyReadRepository,
         *,
         customer_id: str,
         rail: PaymentMethod,
@@ -45,7 +65,7 @@ class LimitsService:
         return LimitsEvaluation(policy=policy, velocity_count=velocity_count)
 
     async def _get_policy(
-        self, repository: LimitsPolicyRepository, rail: PaymentMethod
+        self, repository: LimitsPolicyReadRepository, rail: PaymentMethod
     ) -> LimitsPolicyDTO:
         cache_key = limits_policy_key(rail)
         try:
@@ -81,7 +101,7 @@ class LimitsService:
 
     async def _enforce_daily_limit(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: LimitsPaymentReadRepository,
         customer_id: str,
         rail: PaymentMethod,
         amount: Decimal,
@@ -112,7 +132,7 @@ class LimitsService:
 
     async def _enforce_velocity_limit(
         self,
-        payment_repository: PaymentRepository,
+        payment_repository: LimitsPaymentReadRepository,
         customer_id: str,
         rail: PaymentMethod,
         policy: LimitsPolicyDTO,

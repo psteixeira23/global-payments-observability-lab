@@ -53,7 +53,7 @@ class OutboxRepository:
         )
         await self._session.execute(stmt)
 
-    async def emit_event(self, aggregate_id: UUID, event_type: EventType, payload: dict) -> None:
+    def emit_event(self, aggregate_id: UUID, event_type: EventType, payload: dict) -> None:
         event = OutboxEventORM(
             aggregate_id=aggregate_id,
             event_type=event_type,

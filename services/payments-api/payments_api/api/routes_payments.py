@@ -22,9 +22,7 @@ from shared.contracts import CreatePaymentRequest, PaymentAcceptedResponse, Paym
 router = APIRouter(tags=["payments"])
 
 
-@router.post(
-    "/payments", response_model=PaymentAcceptedResponse, status_code=status.HTTP_202_ACCEPTED
-)
+@router.post("/payments", status_code=status.HTTP_202_ACCEPTED)
 async def create_payment(
     payload: CreatePaymentRequest,
     use_case: Annotated[CreatePaymentUseCase, Depends(get_create_payment_use_case)],
@@ -43,7 +41,7 @@ async def create_payment(
     return await use_case.execute(payload, headers)
 
 
-@router.get("/payments/{payment_id}", response_model=PaymentStatusResponse)
+@router.get("/payments/{payment_id}")
 async def get_payment(
     payment_id: UUID,
     use_case: Annotated[GetPaymentUseCase, Depends(get_get_payment_use_case)],
@@ -51,7 +49,7 @@ async def get_payment(
     return await use_case.execute(payment_id)
 
 
-@router.post("/review/{payment_id}/approve", response_model=PaymentAcceptedResponse)
+@router.post("/review/{payment_id}/approve")
 async def approve_review(
     payment_id: UUID,
     use_case: Annotated[ApproveReviewPaymentUseCase, Depends(get_approve_review_use_case)],
@@ -59,7 +57,7 @@ async def approve_review(
     return await use_case.execute(payment_id)
 
 
-@router.post("/review/{payment_id}/reject", response_model=PaymentAcceptedResponse)
+@router.post("/review/{payment_id}/reject")
 async def reject_review(
     payment_id: UUID,
     use_case: Annotated[RejectReviewPaymentUseCase, Depends(get_reject_review_use_case)],

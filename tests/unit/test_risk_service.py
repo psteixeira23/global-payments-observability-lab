@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from decimal import Decimal
 
@@ -21,10 +22,12 @@ class FakePaymentRepo:
         self._failures = failures
         self._destination_seen = destination_seen
 
-    async def count_failures_since(self, customer_id: str, since):  # noqa: ANN001, ARG002
+    async def count_failures_since(self, customer_id: str, since: datetime) -> int:  # noqa: ARG002
+        await asyncio.sleep(0)
         return self._failures
 
-    async def destination_seen(self, customer_id: str, destination: str | None):  # noqa: ARG002
+    async def destination_seen(self, customer_id: str, destination: str | None) -> bool:  # noqa: ARG002
+        await asyncio.sleep(0)
         return self._destination_seen
 
 
