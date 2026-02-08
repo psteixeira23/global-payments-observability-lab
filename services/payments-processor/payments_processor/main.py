@@ -26,7 +26,7 @@ async def run() -> None:
 
     strategy_factory = ProviderStrategyFactory()
     provider_client = ProviderClientFactory(
-        base_url=settings.provider_mock_base_url,
+        base_url=settings.resolved_provider_mock_base_url,
         timeout_seconds=settings.provider_timeout_seconds,
     ).create()
     breakers = _build_provider_breakers()

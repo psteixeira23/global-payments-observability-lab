@@ -41,7 +41,8 @@ jobs:
           poetry run pytest -q --maxfail=1 --disable-warnings \
             -o addopts="" \
             -m "not integration" \
-            --cov=. \
+            --cov=services \
+            --cov=shared \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing
 

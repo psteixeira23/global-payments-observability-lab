@@ -1,4 +1,6 @@
 from tests.helpers.app import build_app_with_router, override_dependencies
+from tests.helpers.app_client import create_test_client
+from tests.helpers.assertions import assert_error_payload
 from tests.helpers.factories import (
     make_create_payment_payload,
     make_payment_accepted_response,
@@ -26,7 +28,9 @@ __all__ = [
     "FakeReviewUseCase",
     "FakeSession",
     "FakeSessionFactory",
+    "assert_error_payload",
     "build_app_with_router",
+    "create_test_client",
     "make_create_payment_payload",
     "make_payment_accepted_response",
     "make_payment_status_response",

@@ -12,6 +12,10 @@ Main variables:
 - `LOG_LEVEL`
 - `POSTGRES_DSN`
 - `REDIS_URL`
+- `PROVIDER_MOCK_BASE_URL` (optional explicit full URL)
+- `PROVIDER_MOCK_HOST` (used when full URL is not provided)
+- `LOCAL_PROVIDER_SCHEME` (default `http`)
+- `SECURE_PROVIDER_SCHEME` (default `https`)
 - `MERCHANT_RATE_LIMIT`
 - `CUSTOMER_RATE_LIMIT`
 - `ACCOUNT_RATE_LIMIT`
@@ -34,6 +38,9 @@ Provider simulation knobs:
 Note:
 
 - Docker Compose defaults are enough for quick local execution.
+- `payments-processor` resolves provider URL securely by default outside `APP_ENV=local`.
+- Local docker flow intentionally uses HTTP between internal containers.
+- Application containers run with a non-root runtime user (`appuser`) for least privilege.
 - To enable dashboards and trace UI locally, start compose with profile `observability`.
 
 ## Troubleshooting

@@ -102,3 +102,39 @@ Observed results:
 Important note:
 
 - A first attempt to generate `IN_REVIEW` with `customer-basic-001` and high PIX amount returned `limit_exceeded` due accumulated daily usage in persistent local volume. This is expected for long-lived environments.
+
+## Re-Run (Clean Reset + Full Checklist)
+
+Execution date: `2026-02-08`
+
+Environment:
+
+- stack reset with `docker compose -f infra/docker/docker-compose.yml down -v`
+- fresh startup with seeded local data
+
+Validated:
+
+1. Health endpoints
+   - `GET /health` (payments-api) -> `200`
+   - `GET /health` (provider-mock) -> `200`
+2. Provider endpoints
+   - `POST /providers/pix/confirm` -> `200`
+   - `POST /providers/boleto/confirm` -> `200`
+   - `POST /providers/ted/confirm` -> `200`
+   - `POST /providers/card/confirm` -> `200`
+3. API validation error path
+   - invalid `POST /payments` (missing method) -> `422`
+4. Flow scenarios
+   - ALLOW -> `RECEIVED`
+   - BLOCKED (AML blocklist) -> `BLOCKED`
+   - IN_REVIEW + approve -> transition to `RECEIVED`
+   - IN_REVIEW + reject -> `BLOCKED` + `last_error=manual_review_rejected`
+   - idempotency replay -> same `payment_id` and same status
+
+Observed payment IDs:
+
+- `ALLOW`: `6849d6b5-d284-41c0-931d-ac685ff60c8b`
+- `BLOCKED`: `a1252765-bc8d-4b59-ac4b-5d95ef39ead6`
+- `IN_REVIEW + APPROVE`: `8a801001-b059-4951-9117-89b0cb4b3804`
+- `IN_REVIEW + REJECT`: `faa60391-0ac7-4f36-beff-874125b0901a`
+- `IDEMPOTENCY`: `ea8e3b3a-9664-43dd-8e7c-81cb1891f6b7`
