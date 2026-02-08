@@ -69,6 +69,10 @@ Seeded customers:
 - `customer-suspended-001` (`FULL`, `SUSPENDED`)
 - `customer-none-001` (`NONE`, `ACTIVE`)
 
+Recommendation:
+
+- use `customer-full-001` for repeat `IN_REVIEW` demo scenarios to avoid KYC and reduce chance of hitting PIX limits from prior local runs.
+
 Seeded limits policy rails:
 
 - `PIX`

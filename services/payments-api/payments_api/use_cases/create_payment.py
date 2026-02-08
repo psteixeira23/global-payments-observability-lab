@@ -594,9 +594,6 @@ class CreatePaymentUseCase:
             idempotency=IdempotencyRepository(session),
         )
 
-    def _build_repository_bundle(self, session: AsyncSession) -> RepositoryBundle:
-        return self._build_repositories(session)
-
 
 def _resolve_status_from_decisions(
     risk_decision: RiskDecision, aml_decision: AmlDecision

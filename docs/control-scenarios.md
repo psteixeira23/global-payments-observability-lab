@@ -2,6 +2,13 @@
 
 This guide provides deterministic test paths for core control behavior.
 
+For deterministic runs, start from a clean state:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml down -v
+docker compose -f infra/docker/docker-compose.yml up -d --build
+```
+
 ## Control Pipeline
 
 For `POST /payments`, the flow is:
@@ -56,10 +63,10 @@ Create payment:
 curl -s -X POST http://localhost:8080/payments \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: idem-review-approve-001' \
-  -H 'X-Merchant-Id: merchant-1' \
-  -H 'X-Customer-Id: customer-basic-001' \
-  -H 'X-Account-Id: account-1' \
-  -d '{"amount":4600.00,"currency":"BRL","method":"PIX","destination":"dest-review-approve-001"}'
+  -H 'X-Merchant-Id: merchant-2' \
+  -H 'X-Customer-Id: customer-full-001' \
+  -H 'X-Account-Id: account-2' \
+  -d '{"amount":18000.00,"currency":"BRL","method":"TED","destination":"dest-review-approve-001"}'
 ```
 
 Approve:
@@ -81,10 +88,10 @@ Create payment:
 curl -s -X POST http://localhost:8080/payments \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: idem-review-reject-001' \
-  -H 'X-Merchant-Id: merchant-1' \
-  -H 'X-Customer-Id: customer-basic-001' \
-  -H 'X-Account-Id: account-1' \
-  -d '{"amount":4600.00,"currency":"BRL","method":"PIX","destination":"dest-review-reject-001"}'
+  -H 'X-Merchant-Id: merchant-2' \
+  -H 'X-Customer-Id: customer-full-001' \
+  -H 'X-Account-Id: account-3' \
+  -d '{"amount":18000.00,"currency":"BRL","method":"TED","destination":"dest-review-reject-001"}'
 ```
 
 Reject:

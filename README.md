@@ -49,6 +49,13 @@ Stop stack:
 docker compose -f infra/docker/docker-compose.yml down
 ```
 
+Reset stack state (recommended before deterministic scenario replay):
+
+```bash
+docker compose -f infra/docker/docker-compose.yml down -v
+docker compose -f infra/docker/docker-compose.yml up -d --build
+```
+
 ## Local URLs
 
 - API health: `http://localhost:8080/health`
@@ -83,6 +90,24 @@ Full documentation is organized under `docs/`:
 - `docs/roadmap-week2.md`: expansion plan.
 - `docs/evidence/smoke-tests-2026-02-08.md`: smoke test evidence.
 - `docs/architecture/patterns.md`: patterns and design references.
+
+## Validation Snapshot (2026-02-08)
+
+Validated in local Docker runtime:
+
+- test suite: `64 passed, 1 skipped`
+- payments-api endpoints: all routes from OpenAPI executed
+- provider-mock endpoints: all routes from OpenAPI executed
+- smoke scenarios confirmed:
+  - `ALLOW`
+  - `IN_REVIEW` + `approve`
+  - `IN_REVIEW` + `reject`
+  - `BLOCKED`
+  - idempotency replay (`same payment_id`)
+
+Evidence file:
+
+- `docs/evidence/smoke-tests-2026-02-08.md`
 
 ## License
 

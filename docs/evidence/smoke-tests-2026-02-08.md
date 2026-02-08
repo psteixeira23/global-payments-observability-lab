@@ -60,3 +60,45 @@ Observed checklist:
 5. IDEMPOTENCY REPLAY
    - `payment_id=d0e93858-bb92-4a63-957a-d688ea123de7`
    - repeated call returned same payload snapshot
+
+## Re-Run (Full Endpoint Sweep)
+
+Execution date: `2026-02-08`
+
+Validated endpoints:
+
+- `GET /health` (payments-api)
+- `POST /payments`
+- `GET /payments/{payment_id}`
+- `POST /review/{payment_id}/approve`
+- `POST /review/{payment_id}/reject`
+- `GET /health` (provider-mock)
+- `POST /providers/pix/confirm`
+- `POST /providers/boleto/confirm`
+- `POST /providers/ted/confirm`
+- `POST /providers/card/confirm`
+
+Observed results:
+
+1. ALLOW
+   - `payment_id=892766f7-a958-40c7-86e8-5a4a8bde98fe`
+   - `status=RECEIVED`
+2. IN_REVIEW + APPROVE
+   - `payment_id=a3c24a6f-89b9-4d4c-bc3c-aa1a9b49962f`
+   - review response `status=RECEIVED`
+3. IN_REVIEW + REJECT
+   - `payment_id=fb016ed9-b5f8-4a0b-bea0-dcb97f61fdf2`
+   - review response `status=BLOCKED`
+   - `last_error=manual_review_rejected`
+4. BLOCKED
+   - `payment_id=a51cbea0-8a29-4d37-8568-c30a12062bb5`
+   - `aml_decision=BLOCK`
+5. IDEMPOTENCY REPLAY
+   - first/second response returned same `payment_id=03f58a09-71f9-4584-9ba9-69b5dd0773c5`
+6. Provider mock calls
+   - `pix`: returned `503` (fault injection expected)
+   - `boleto`, `ted`, `card`: returned `200` with provider payload
+
+Important note:
+
+- A first attempt to generate `IN_REVIEW` with `customer-basic-001` and high PIX amount returned `limit_exceeded` due accumulated daily usage in persistent local volume. This is expected for long-lived environments.
