@@ -1,0 +1,65 @@
+[tool.poetry]
+name = "global-payments-observability-lab"
+version = "0.1.0"
+description = "Local-first observability engineering lab for fintech payments"
+authors = ["Global Payments Lab Team"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115.0"
+uvicorn = {version = "^0.30.0", extras = ["standard"]}
+sqlalchemy = "^2.0.36"
+asyncpg = "^0.30.0"
+redis = "^5.2.0"
+httpx = "^0.28.1"
+pydantic = "^2.10.0"
+pydantic-settings = "^2.6.1"
+opentelemetry-api = "^1.29.0"
+opentelemetry-sdk = "^1.29.0"
+opentelemetry-exporter-otlp = "^1.29.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "^3.14.0"
+ruff = "^0.8.4"
+black = "^24.10.0"
+mypy = "^1.13.0"
+testcontainers = {version = "^4.9.0", extras = ["postgresql", "redis"]}
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+exclude = "(^tests/)|(^infra/)"
+
+[tool.pytest.ini_options]
+addopts = "-q -m 'not integration' --cov=shared/constants --cov=shared/contracts --cov=shared/resilience --cov=shared/utils --cov=payments_api.services --cov=payments_api.use_cases.create_payment --cov=payments_processor.providers.factory --cov=payments_processor.providers.strategy --cov-report=term-missing --cov-fail-under=88"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+  "integration: marks integration tests requiring docker/testcontainers",
+]
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"

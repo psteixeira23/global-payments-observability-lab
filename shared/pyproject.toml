@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "shared"
+version = "0.1.0"
+description = "Shared contracts and utilities for Global Payments Observability Lab"
+authors = ["Patrick <patrick@example.com>"]
+packages = [{ include = "shared" }]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
