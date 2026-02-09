@@ -9,6 +9,12 @@ docker compose -f infra/docker/docker-compose.yml down -v
 docker compose -f infra/docker/docker-compose.yml up -d --build
 ```
 
+Authentication note:
+
+- Examples below omit `Authorization` for readability.
+- If `API_AUTH_ENABLED=true`, add this header to every `payments-api` call:
+  - `-H 'Authorization: Bearer <API_AUTH_TOKEN>'`
+
 ## Control Pipeline
 
 For `POST /payments`, the flow is:

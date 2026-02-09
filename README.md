@@ -138,6 +138,7 @@ Detailed architecture, trade-offs, extension rules, and pattern map:
 ## Quick Start
 
 ```bash
+cp .env.example .env
 docker compose -f infra/docker/docker-compose.yml up -d --build
 docker compose -f infra/docker/docker-compose.yml ps
 curl -s http://localhost:8080/health
@@ -160,6 +161,12 @@ curl -s -X POST http://localhost:8080/payments \
   -H 'X-Customer-Id: customer-basic-001' \
   -H 'X-Account-Id: account-1' \
   -d '{"amount":100.00,"currency":"BRL","method":"PIX","destination":"dest-safe-001"}'
+```
+
+If `API_AUTH_ENABLED=true`, include:
+
+```bash
+-H 'Authorization: Bearer <your-token>'
 ```
 
 Follow logs:

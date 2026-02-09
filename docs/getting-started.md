@@ -24,6 +24,12 @@ poetry --version
 
 ## Run the Platform
 
+Optional but recommended before startup:
+
+```bash
+cp .env.example .env
+```
+
 ```bash
 docker compose -f infra/docker/docker-compose.yml up -d --build
 docker compose -f infra/docker/docker-compose.yml ps
@@ -100,6 +106,11 @@ curl -s -X POST http://localhost:8080/payments \
   -H 'X-Account-Id: account-1' \
   -d '{"amount":100.00,"currency":"BRL","method":"PIX","destination":"dest-safe-001"}'
 ```
+
+Authentication note:
+
+- By default, local docker setup runs with `API_AUTH_ENABLED=false`.
+- If you enable auth, include `Authorization: Bearer <API_AUTH_TOKEN>` on all `payments-api` requests.
 
 Query payment by `payment_id`:
 

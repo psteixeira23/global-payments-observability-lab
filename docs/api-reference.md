@@ -2,6 +2,15 @@
 
 ## Payments API (`:8080`)
 
+### Authentication
+
+- Authentication is controlled by `API_AUTH_ENABLED`.
+- If enabled, every `payments` route in `payments-api` requires:
+  - `Authorization: Bearer <API_AUTH_TOKEN>`
+- Error responses:
+  - `401` missing bearer token
+  - `401` invalid bearer token
+
 ### POST `/payments`
 
 Required headers:

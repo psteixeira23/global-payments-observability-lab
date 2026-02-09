@@ -43,4 +43,4 @@ This folder contains the detailed documentation for `global-payments-observabili
 
 ## Evidence
 
-- `evidence/smoke-tests.md`
+- `evidence/smoke-tests.md` (canonical smoke test evidence log)

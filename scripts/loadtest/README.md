@@ -33,6 +33,11 @@ curl -s http://localhost:8080/health
 curl -s http://localhost:8082/health
 ```
 
+Authentication note:
+
+- Current scripts do not inject bearer token headers.
+- Run load tests with `API_AUTH_ENABLED=false`, or extend the scripts before testing authenticated mode.
+
 ## Scripts
 
 - `k6/mixed_rails_traffic.js`: sustained mixed rail traffic with optional high target RPS.

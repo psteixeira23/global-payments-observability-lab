@@ -127,13 +127,20 @@ Detailed runbook:
   - `.github/workflows/loadtest-5k-evidence.yml`
   - requires a dedicated self-hosted runner labeled: `self-hosted`, `linux`, `x64`, `loadtest`
 
+Important:
+
+- Current k6 scripts assume `API_AUTH_ENABLED=false`.
+- If API auth is enabled, either disable it for load tests or extend scripts to include bearer headers.
+
 ## Queue Fan-out Smoke (Optional)
 
 RabbitMQ backend:
 
 ```bash
+RABBITMQ_DEFAULT_USER=lab_rabbit_user \
+RABBITMQ_DEFAULT_PASS=change-this-password \
 EVENT_BUS_BACKEND=rabbitmq \
-EVENT_BUS_URL=amqp://guest:guest@rabbitmq:5672/ \
+EVENT_BUS_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/ \
 docker compose -f infra/docker/docker-compose.yml --profile queue up -d rabbitmq --force-recreate payments-processor
 ```
 

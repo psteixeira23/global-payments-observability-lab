@@ -6,6 +6,12 @@ Reference:
 
 - `.env.example`
 
+Recommended setup:
+
+```bash
+cp .env.example .env
+```
+
 Main variables:
 
 - `APP_ENV`
@@ -67,8 +73,10 @@ docker compose -f infra/docker/docker-compose.yml --profile queue up -d rabbitmq
 Enable RabbitMQ fan-out in processor:
 
 ```bash
+RABBITMQ_DEFAULT_USER=lab_rabbit_user \
+RABBITMQ_DEFAULT_PASS=change-this-password \
 EVENT_BUS_BACKEND=rabbitmq \
-EVENT_BUS_URL=amqp://guest:guest@rabbitmq:5672/ \
+EVENT_BUS_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/ \
 docker compose -f infra/docker/docker-compose.yml --profile queue up -d --force-recreate payments-processor
 ```
 
