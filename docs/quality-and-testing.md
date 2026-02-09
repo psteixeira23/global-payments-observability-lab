@@ -67,6 +67,7 @@ CI includes:
 - mypy
 - tests with coverage gate
 - Docker Compose validation
+- edge hardening overlay support via dedicated compose file (`infra/docker/docker-compose.edge.yml`)
 
 CD includes:
 
@@ -151,4 +152,19 @@ EVENT_BUS_BACKEND=kafka \
 EVENT_BUS_KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
 EVENT_BUS_KAFKA_TOPIC=payments.domain-events \
 docker compose -f infra/docker/docker-compose.yml --profile queue up -d kafka --force-recreate payments-processor
+```
+
+## Edge Hardening Smoke (Optional)
+
+Start stack with edge overlay:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge up -d --build
+```
+
+Validate:
+
+```bash
+curl -k -s -o /dev/null -w "edge /health -> %{http_code}\n" https://localhost:8443/health
+curl -s -o /dev/null -w "redirect /health -> %{http_code}\n" http://localhost:8088/health
 ```

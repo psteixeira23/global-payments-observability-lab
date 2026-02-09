@@ -41,6 +41,12 @@ Optional: start with local observability stack (Jaeger, Prometheus, Grafana):
 docker compose -f infra/docker/docker-compose.yml --profile observability up -d --build
 ```
 
+Optional: run with edge hardening overlay (TLS gateway + reduced host exposure for internal services):
+
+```bash
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge up -d --build
+```
+
 Quick metrics check:
 
 ```bash
@@ -121,6 +127,7 @@ curl -s http://localhost:8080/payments/<payment_id>
 ## Useful URLs
 
 - Monitoring and dashboard URLs: `docs/README.md#monitoring-endpoints`
+- Edge HTTPS health (if edge profile is enabled): `https://localhost:8443/health`
 
 ## Stop and Reset
 

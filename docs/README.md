@@ -21,6 +21,9 @@ This folder contains the detailed documentation for `global-payments-observabili
 - Grafana credentials are configured via `.env`:
   - `GRAFANA_ADMIN_USER`
   - `GRAFANA_ADMIN_PASSWORD`
+- Edge gateway (`edge` profile):
+  - HTTPS health: `https://localhost:8443/health` (`-k` for local cert)
+  - HTTP redirect: `http://localhost:8088`
 - API health: `http://localhost:8080/health`
 - Grafana home: `http://localhost:3000`
 - Grafana folder: `http://localhost:3000/dashboards/f/cfcnhdf7apybka/payments-observability`
@@ -40,6 +43,8 @@ This folder contains the detailed documentation for `global-payments-observabili
 - `../infra/observability/otel-collector-config.yaml`
 - `../infra/observability/prometheus.yml`
 - `../infra/observability/grafana/`
+- `../infra/docker/docker-compose.edge.yml`
+- `../infra/edge/`
 
 ## Evidence
 

@@ -43,6 +43,18 @@ This repository is a **laboratory project** and is not production-ready by defau
 - Security controls are intentionally minimal and configurable for local iteration speed.
 - Deploying this stack to the public internet without additional controls is unsafe.
 
+## Security Scope for Study Mode
+
+This repository intentionally does not implement the following production controls in v1:
+
+- OIDC/JWT authorization with tenant-aware roles
+- internal mTLS between services
+- external secret manager with automatic secret/key rotation
+
+Reason:
+
+- these controls require full lifecycle operations (PKI, key management, rotation, incident runbooks) that are out of scope for this learning-focused lab baseline.
+
 ## Minimal Threat Model
 
 - Assets:
@@ -76,10 +88,11 @@ This repository is a **laboratory project** and is not production-ready by defau
 - [x] Optional bearer auth for `payments-api` routes (`API_AUTH_ENABLED=true`)
 - [x] Scoped rate limiting (`merchant`, `customer`, `account`)
 - [x] Structured logging with redaction for sensitive destination/card-like fields
+- [x] Edge hardening baseline (TLS termination, request limits, bot/scanner filter, internal port exposure reduction via edge compose overlay)
 - [ ] OIDC/JWT authN+authZ with tenant-aware roles
 - [ ] End-to-end TLS + mTLS between internal services
 - [ ] Secret manager integration (Vault/AWS/GCP) with rotation
-- [ ] Edge hardening (WAF, bot protection, DDoS controls, API gateway policies)
+- [ ] Advanced edge hardening (WAF integration, managed bot protection, enterprise DDoS controls, gateway policy as code)
 
 ## Prerequisites
 
@@ -151,6 +164,12 @@ Enable local observability UIs:
 docker compose -f infra/docker/docker-compose.yml --profile observability up -d
 ```
 
+Run with edge hardening mode (TLS at gateway + restricted host exposure):
+
+```bash
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge up -d --build
+```
+
 Create a payment:
 
 ```bash
@@ -167,6 +186,12 @@ If `API_AUTH_ENABLED=true`, include:
 
 ```bash
 -H 'Authorization: Bearer <your-token>'
+```
+
+When using edge mode, call API through:
+
+```bash
+curl -k https://localhost:8443/health
 ```
 
 Follow logs:
@@ -203,6 +228,8 @@ poetry run pytest -q
 - API docs: `http://localhost:8080/docs`
 - Provider health: `http://localhost:8082/health`
 - Provider docs: `http://localhost:8082/docs`
+- Edge gateway health (edge profile): `https://localhost:8443/health` (`-k` for local self-signed cert)
+- Edge HTTP redirect endpoint (edge profile): `http://localhost:8088`
 - Monitoring dashboards and observability URLs: `docs/README.md#monitoring-endpoints`
 
 ## Observability Quick Check

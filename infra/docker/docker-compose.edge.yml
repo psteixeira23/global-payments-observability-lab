@@ -1,0 +1,24 @@
+services:
+  edge-gateway:
+    build:
+      context: ../edge
+      dockerfile: Dockerfile
+    depends_on:
+      payments-api:
+        condition: service_healthy
+    ports:
+      - "8443:8443"
+      - "8088:8088"
+    profiles: ["edge"]
+
+  payments-api:
+    ports: !override []
+
+  provider-mock:
+    ports: !override []
+
+  postgres:
+    ports: !override []
+
+  redis:
+    ports: !override []

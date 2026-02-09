@@ -219,3 +219,41 @@ Post-check rollback to default local mode:
 API_AUTH_ENABLED=false API_AUTH_TOKEN= \
   docker compose -f infra/docker/docker-compose.yml up -d --force-recreate payments-api
 ```
+
+## Edge Hardening Smoke - 2026-02-09
+
+Execution purpose:
+
+- Validate edge-only hardening mode for study scope (without JWT/Vault/mTLS).
+
+Commands used:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge up -d --build
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge ps
+```
+
+```bash
+curl -k -s -o /tmp/edge_health.json -w 'edge https /health -> %{http_code}\n' https://localhost:8443/health
+curl -s -o /dev/null -w 'edge http redirect /health -> %{http_code}\n' http://localhost:8088/health
+curl -k -s -o /tmp/edge_put.json -w 'edge PUT /health -> %{http_code}\n' -X PUT https://localhost:8443/health
+curl -k -s -o /tmp/edge_bot.json -w 'edge bad bot UA -> %{http_code}\n' https://localhost:8443/health -A 'sqlmap'
+```
+
+Observed results:
+
+- `https://localhost:8443/health` -> `200`
+- `http://localhost:8088/health` -> `301` redirect to HTTPS
+- `PUT https://localhost:8443/health` -> `405` (method restricted at gateway)
+- bad bot signature (`User-Agent: sqlmap`) -> `403`
+- host exposure in edge mode:
+  - `payments-api` published port -> none (`PublishedPort=0`)
+  - `provider-mock` published port -> none (`PublishedPort=0`)
+  - `postgres` published port -> none (`PublishedPort=0`)
+  - `redis` published port -> none (`PublishedPort=0`)
+  - `edge-gateway` published ports -> `8088`, `8443`
+
+Notes:
+
+- TLS certificate is self-signed for local study mode; use `-k` in curl.
+- This validates edge baseline controls only; advanced production controls remain out of scope by design.

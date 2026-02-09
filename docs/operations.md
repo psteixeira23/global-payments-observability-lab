@@ -63,12 +63,31 @@ Note:
 - Application containers run with a non-root runtime user (`appuser`) for least privilege.
 - Optional queue profile can be enabled with RabbitMQ and Kafka for domain event fan-out.
 - To enable dashboards and trace UI locally, start compose with profile `observability`.
+- Edge hardening mode can be enabled with compose overlay `infra/docker/docker-compose.edge.yml`.
+
+Out-of-scope by design in study mode:
+
+- OIDC/JWT identity provider integration
+- internal mTLS between microservices
+- Vault/managed secrets and key rotation workflows
 
 Start queue profile:
 
 ```bash
 docker compose -f infra/docker/docker-compose.yml --profile queue up -d rabbitmq kafka
 ```
+
+Start edge hardening profile:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.edge.yml --profile edge up -d --build
+```
+
+Edge mode behavior:
+
+- API ingress through TLS gateway (`https://localhost:8443`).
+- direct host exposure for `payments-api`, `provider-mock`, `postgres`, and `redis` is removed.
+- HTTP on `:8088` redirects to HTTPS on `:8443`.
 
 Enable RabbitMQ fan-out in processor:
 
@@ -114,6 +133,13 @@ curl -s 'http://localhost:9090/api/v1/query?query=payments_api_request_total'
 ```
 
 If query result is empty, generate payment traffic and retry.
+
+### Edge gateway smoke checks
+
+```bash
+curl -k -s -o /dev/null -w "edge /health -> %{http_code}\n" https://localhost:8443/health
+curl -s -o /dev/null -w "redirect /health -> %{http_code}\n" http://localhost:8088/health
+```
 
 ### `Customer not found`
 
