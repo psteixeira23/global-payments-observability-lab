@@ -12,9 +12,14 @@ class Settings(BaseSettings):
     service_name: str = "payments-api"
     app_env: str = "local"
     log_level: str = "INFO"
+    api_auth_enabled: bool = False
+    api_auth_token: str | None = None
 
     postgres_dsn: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/payments"
     redis_url: str = "redis://localhost:6379/0"
+    cors_allowed_origins_csv: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080"
+    )
 
     idempotency_ttl_seconds: int = Field(default=300, ge=10)
     limits_policy_cache_ttl_seconds: int = Field(default=60, ge=10)
@@ -40,6 +45,10 @@ class Settings(BaseSettings):
         return {
             item.strip() for item in self.aml_blocklist_destinations_csv.split(",") if item.strip()
         }
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [item.strip() for item in self.cors_allowed_origins_csv.split(",") if item.strip()]
 
 
 @lru_cache

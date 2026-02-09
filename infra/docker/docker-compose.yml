@@ -32,8 +32,9 @@ services:
     environment:
       APP_ENV: local
       LOG_LEVEL: INFO
-      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-console}
-      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-console}
+      CORS_ALLOWED_ORIGINS_CSV: ${CORS_ALLOWED_ORIGINS_CSV:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
       RANDOM_SEED: 42
@@ -62,8 +63,11 @@ services:
     environment:
       APP_ENV: local
       LOG_LEVEL: INFO
+      API_AUTH_ENABLED: ${API_AUTH_ENABLED:-false}
+      API_AUTH_TOKEN: ${API_AUTH_TOKEN:-}
       POSTGRES_DSN: postgresql+asyncpg://postgres:postgres@postgres:5432/payments
       REDIS_URL: redis://redis:6379/0
+      CORS_ALLOWED_ORIGINS_CSV: ${CORS_ALLOWED_ORIGINS_CSV:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080}
       MERCHANT_RATE_LIMIT: ${MERCHANT_RATE_LIMIT:-120}
       CUSTOMER_RATE_LIMIT: ${CUSTOMER_RATE_LIMIT:-80}
       ACCOUNT_RATE_LIMIT: ${ACCOUNT_RATE_LIMIT:-80}
@@ -73,8 +77,8 @@ services:
       AML_STRUCTURING_WINDOW_SECONDS: ${AML_STRUCTURING_WINDOW_SECONDS:-900}
       AML_STRUCTURING_COUNT_THRESHOLD: ${AML_STRUCTURING_COUNT_THRESHOLD:-3}
       AML_BLOCKLIST_DESTINATIONS_CSV: ${AML_BLOCKLIST_DESTINATIONS_CSV:-dest-blocked-001,dest-blocked-002}
-      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-console}
-      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-console}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
     healthcheck:
@@ -101,11 +105,65 @@ services:
       LOG_LEVEL: INFO
       POSTGRES_DSN: postgresql+asyncpg://postgres:postgres@postgres:5432/payments
       PROVIDER_MOCK_HOST: provider-mock:8082
-      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-console}
-      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-console}
+      EVENT_BUS_BACKEND: ${EVENT_BUS_BACKEND:-none}
+      EVENT_BUS_URL: ${EVENT_BUS_URL:-amqp://guest:guest@rabbitmq:5672/}
+      EVENT_BUS_EXCHANGE: ${EVENT_BUS_EXCHANGE:-payments.events}
+      EVENT_BUS_ROUTING_PREFIX: ${EVENT_BUS_ROUTING_PREFIX:-payments}
+      EVENT_BUS_KAFKA_BOOTSTRAP_SERVERS: ${EVENT_BUS_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      EVENT_BUS_KAFKA_TOPIC: ${EVENT_BUS_KAFKA_TOPIC:-payments.domain-events}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4318}
       OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
     restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-lab_rabbit_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-lab_rabbit_password_change_me}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    profiles: ["queue"]
+
+  kafka:
+    image: redpandadata/redpanda:v24.1.9
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "1G"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://kafka:9092,external://localhost:19092
+      - --pandaproxy-addr
+      - internal://0.0.0.0:8083,external://0.0.0.0:18083
+      - --advertise-pandaproxy-addr
+      - internal://kafka:8083,external://localhost:18083
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    ports:
+      - "19092:19092"
+      - "18083:18083"
+    profiles: ["queue"]
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.119.0
@@ -135,6 +193,7 @@ services:
       - "--storage.tsdb.path=/prometheus"
     volumes:
       - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus-alerts.yml:/etc/prometheus/alerts.yml:ro
     depends_on:
       - otel-collector
     ports:
@@ -144,8 +203,8 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-grafana_admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-grafana_password_change_me}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - ../observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro

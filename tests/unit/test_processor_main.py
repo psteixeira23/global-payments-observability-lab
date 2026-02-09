@@ -37,16 +37,25 @@ class FakeProviderClientFactory:
 
 class FakeOutboxWorker:
     def __init__(
-        self, settings, session_factory, provider_command, strategy_factory
+        self, settings, session_factory, provider_command, strategy_factory, event_publisher
     ) -> None:  # noqa: ANN001
         self.settings = settings
         self.session_factory = session_factory
         self.provider_command = provider_command
         self.strategy_factory = strategy_factory
+        self.event_publisher = event_publisher
         self.run_count = 0
 
     async def run_forever(self) -> None:
         self.run_count += 1
+
+
+class FakeEventPublisher:
+    def __init__(self) -> None:
+        self.closed = False
+
+    async def close(self) -> None:
+        self.closed = True
 
 
 @pytest.mark.asyncio
@@ -64,6 +73,7 @@ async def test_run_initializes_worker_and_closes_resources(monkeypatch) -> None:
     )
     engine = FakeEngine()
     session_factory = object()
+    event_publisher = FakeEventPublisher()
     worker_instances: list[FakeOutboxWorker] = []
 
     def fake_outbox_worker(*args, **kwargs):  # noqa: ANN002, ANN003
@@ -77,6 +87,9 @@ async def test_run_initializes_worker_and_closes_resources(monkeypatch) -> None:
     monkeypatch.setattr(processor_main, "build_engine", lambda _dsn: engine)
     monkeypatch.setattr(processor_main, "build_session_factory", lambda _engine: session_factory)
     monkeypatch.setattr(processor_main, "ProviderClientFactory", FakeProviderClientFactory)
+    monkeypatch.setattr(
+        processor_main, "build_event_bus_publisher", lambda _settings: event_publisher
+    )
     monkeypatch.setattr(processor_main, "OutboxWorker", fake_outbox_worker)
 
     await processor_main.run()
@@ -89,6 +102,7 @@ async def test_run_initializes_worker_and_closes_resources(monkeypatch) -> None:
     assert isinstance(worker.provider_command._client, FakeProviderClient)  # type: ignore[attr-defined]
     assert engine.disposed is True
     assert worker.provider_command._client.closed is True  # type: ignore[attr-defined]
+    assert event_publisher.closed is True
 
 
 def test_build_provider_breakers_covers_all_supported_providers() -> None:

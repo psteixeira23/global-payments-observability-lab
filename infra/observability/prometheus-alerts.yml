@@ -1,0 +1,38 @@
+groups:
+  - name: payments-slo-alerts
+    rules:
+      - alert: PaymentsApiP99High
+        expr: histogram_quantile(0.99, sum(rate(payments_api_request_latency_ms_bucket[5m])) by (le)) > 2500
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Payments API p99 latency above threshold"
+          description: "The p99 latency has been above 2500ms for at least 10 minutes."
+
+      - alert: PaymentsApiErrorRateHigh
+        expr: (sum(rate(payments_api_error_total[5m])) / sum(rate(payments_api_request_total[5m]))) > 0.03
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Payments API error rate above threshold"
+          description: "Error rate is above 3% over 5 minutes."
+
+      - alert: OutboxLagHigh
+        expr: histogram_quantile(0.95, sum(rate(payments_processor_outbox_lag_seconds_bucket[5m])) by (le)) > 60
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox lag is high"
+          description: "Average outbox lag is above 60 seconds."
+
+      - alert: ReviewQueueGrowing
+        expr: max_over_time(review_queue_size[15m]) > 200
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "IN_REVIEW queue is growing"
+          description: "Manual review queue has exceeded 200 items in the last 15 minutes."

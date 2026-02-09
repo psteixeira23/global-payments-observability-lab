@@ -13,8 +13,27 @@ This folder contains the detailed documentation for `global-payments-observabili
 - `observability.md`
 - `quality-and-testing.md`
 - `operations.md`
-- `roadmap-week2.md`
 - `architecture/patterns.md`
+- `../scripts/loadtest/README.md`
+
+## Monitoring Endpoints
+
+- Grafana credentials are configured via `.env`:
+  - `GRAFANA_ADMIN_USER`
+  - `GRAFANA_ADMIN_PASSWORD`
+- API health: `http://localhost:8080/health`
+- Grafana home: `http://localhost:3000`
+- Grafana folder: `http://localhost:3000/dashboards/f/cfcnhdf7apybka/payments-observability`
+- Grafana main dashboard: `http://localhost:3000/d/payments-observability-overview/payments-observability-overview`
+- Prometheus home: `http://localhost:9090`
+- Prometheus graph: `http://localhost:9090/graph`
+- Prometheus targets: `http://localhost:9090/targets`
+- Prometheus alerts/rules: `http://localhost:9090/rules`
+- Provider health: `http://localhost:8082/health`
+- Jaeger search: `http://localhost:16686/search`
+- RabbitMQ management (queue profile): `http://localhost:15672`
+- API docs: `http://localhost:8080/docs`
+- Provider docs: `http://localhost:8082/docs`
 
 ## Infrastructure Assets
 
@@ -24,4 +43,4 @@ This folder contains the detailed documentation for `global-payments-observabili
 
 ## Evidence
 
-- `evidence/smoke-tests-2026-02-08.md`
+- `evidence/smoke-tests.md`

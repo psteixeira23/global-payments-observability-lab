@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     local_provider_scheme: str = "http"
     secure_provider_scheme: str = "https"
     provider_timeout_seconds: float = Field(default=1.5, gt=0)
+    event_bus_backend: str = "none"
+    event_bus_url: str | None = None
+    event_bus_exchange: str = "payments.events"
+    event_bus_routing_prefix: str = "payments"
+    event_bus_kafka_bootstrap_servers: str = "kafka:9092"
+    event_bus_kafka_topic: str = "payments.domain-events"
 
     poll_interval_seconds: float = Field(default=1.0, gt=0)
     batch_size: int = Field(default=50, ge=1)

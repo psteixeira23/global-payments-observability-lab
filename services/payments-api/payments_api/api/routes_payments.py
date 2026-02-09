@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, status
 
 from payments_api.api.dependencies import (
+    enforce_api_auth,
     get_approve_review_use_case,
     get_create_payment_use_case,
     get_get_payment_use_case,
@@ -19,7 +20,7 @@ from payments_api.use_cases.review_payment import (
 )
 from shared.contracts import CreatePaymentRequest, PaymentAcceptedResponse, PaymentStatusResponse
 
-router = APIRouter(tags=["payments"])
+router = APIRouter(tags=["payments"], dependencies=[Depends(enforce_api_auth)])
 
 
 @router.post("/payments", status_code=status.HTTP_202_ACCEPTED)

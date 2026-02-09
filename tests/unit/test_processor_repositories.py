@@ -92,9 +92,14 @@ async def test_processor_payment_repository_transitions_and_optimistic_locking()
 async def test_processor_outbox_repository_fetches_and_marks_events() -> None:
     event_id = uuid4()
     event = SimpleNamespace(event_id=event_id, created_at=datetime.now(UTC) - timedelta(seconds=10))
+    fanout_event = SimpleNamespace(
+        event_id=uuid4(),
+        created_at=datetime.now(UTC) - timedelta(seconds=5),
+    )
     session = FakeSession(
         [
             FakeExecuteResult(scalars_values=[event]),
+            FakeExecuteResult(scalars_values=[fanout_event]),
             FakeExecuteResult(),
             FakeExecuteResult(),
             FakeExecuteResult(),
@@ -106,6 +111,7 @@ async def test_processor_outbox_repository_fetches_and_marks_events() -> None:
     repository = OutboxRepository(session)  # type: ignore[arg-type]
 
     fetched = await repository.fetch_pending_requested(limit=20)
+    fanout_fetched = await repository.fetch_pending_fanout_events(limit=20)
     await repository.mark_sent(event_id)
     await repository.mark_failed(event_id, attempts=2)
     await repository.reschedule(event_id, attempts=3, delay_seconds=1.5)
@@ -114,12 +120,14 @@ async def test_processor_outbox_repository_fetches_and_marks_events() -> None:
     empty_lag = await repository.oldest_pending_lag_seconds()
 
     assert fetched == [event]
+    assert fanout_fetched == [fanout_event]
     assert backlog == 4
     assert lag >= 0
     assert empty_lag == 0.0
     assert "outbox_events.event_type = :event_type_1" in session.executed_statements[0]
-    assert "SET status=:status" in session.executed_statements[1]
+    assert "outbox_events.event_type IN" in session.executed_statements[1]
     assert "SET status=:status" in session.executed_statements[2]
+    assert "SET status=:status" in session.executed_statements[3]
 
 
 def test_processor_outbox_repository_emit_event_adds_pending_entity() -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 
 from opentelemetry import trace
 from opentelemetry.context import Context
@@ -11,7 +12,14 @@ from payments_processor.commands.finalize_payment import FinalizePaymentCommand
 from payments_processor.commands.mark_processing import MarkProcessingCommand
 from payments_processor.core.config import Settings
 from payments_processor.core.errors import ProcessorError
-from payments_processor.core.metrics import outbox_backlog, outbox_lag_seconds
+from payments_processor.core.metrics import (
+    fanout_backlog,
+    fanout_publish_errors,
+    fanout_publish_latency,
+    outbox_backlog,
+    outbox_lag_seconds,
+)
+from payments_processor.event_bus import EventBusPublisher, NoopEventBusPublisher
 from payments_processor.providers.strategy import ProviderStrategyFactory
 from payments_processor.repositories.outbox_repository import OutboxRepository
 from payments_processor.repositories.payment_repository import PaymentRepository
@@ -30,11 +38,13 @@ class OutboxWorker:
         session_factory: async_sessionmaker[AsyncSession],
         provider_command: CallProviderCommand,
         strategy_factory: ProviderStrategyFactory,
+        event_publisher: EventBusPublisher | None = None,
     ) -> None:
         self._settings = settings
         self._session_factory = session_factory
         self._provider_command = provider_command
         self._strategy_factory = strategy_factory
+        self._event_publisher = event_publisher or NoopEventBusPublisher()
         self._tracer = trace.get_tracer(__name__)
 
     async def run_forever(self) -> None:
@@ -56,6 +66,7 @@ class OutboxWorker:
             events = await outbox_repo.fetch_pending_requested(self._settings.batch_size)
             for event in events:
                 await self._process_event(session, event)
+            await self._publish_fanout_events(session, outbox_repo)
 
     async def _process_event(self, session: AsyncSession, event: OutboxEventORM) -> None:
         with self._tracer.start_as_current_span(
@@ -128,6 +139,54 @@ class OutboxWorker:
             )
             await outbox_repo.mark_failed(event.event_id, event.attempts + 1)
         await session.commit()
+
+    async def _publish_fanout_events(
+        self, session: AsyncSession, outbox_repo: OutboxRepository
+    ) -> None:
+        if not self._event_publisher.is_enabled:
+            return
+        events = await outbox_repo.fetch_pending_fanout_events(self._settings.batch_size)
+        fanout_backlog.record(len(events))
+        for event in events:
+            await self._publish_fanout_event(session, outbox_repo, event)
+
+    async def _publish_fanout_event(
+        self, session: AsyncSession, outbox_repo: OutboxRepository, event: OutboxEventORM
+    ) -> None:
+        start = time.perf_counter()
+        with self._tracer.start_as_current_span(
+            "event_fanout_publish", context=self._extract_context(event)
+        ):
+            try:
+                await self._event_publisher.publish(event)
+                await outbox_repo.mark_sent(event.event_id)
+            except Exception as exc:  # noqa: BLE001
+                fanout_publish_errors.add(1, {"event_type": event.event_type.value})
+                await self._handle_fanout_failure(outbox_repo, event, exc)
+            finally:
+                elapsed_ms = (time.perf_counter() - start) * 1000
+                fanout_publish_latency.record(elapsed_ms, {"event_type": event.event_type.value})
+            await session.commit()
+
+    async def _handle_fanout_failure(
+        self, outbox_repo: OutboxRepository, event: OutboxEventORM, error: Exception
+    ) -> None:
+        attempts = event.attempts + 1
+        logger.exception(
+            "event_fanout_publish_failed",
+            extra={
+                "extra_fields": {
+                    "event_id": str(event.event_id),
+                    "event_type": event.event_type.value,
+                    "error_type": type(error).__name__,
+                }
+            },
+        )
+        if attempts >= self._settings.max_event_attempts:
+            await outbox_repo.mark_failed(event.event_id, attempts)
+            return
+        delay = exponential_backoff(attempts, base_seconds=0.5, cap_seconds=5.0)
+        await outbox_repo.reschedule(event.event_id, attempts=attempts, delay_seconds=delay)
 
     async def _handle_processor_error(
         self,

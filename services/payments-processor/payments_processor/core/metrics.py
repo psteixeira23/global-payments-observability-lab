@@ -15,3 +15,12 @@ provider_latency = meter.create_histogram(
 provider_errors = meter.create_counter(
     "payments_processor_provider_errors", description="Provider call errors"
 )
+fanout_backlog = meter.create_histogram(
+    "payments_processor_fanout_backlog", description="Fan-out outbox backlog snapshots"
+)
+fanout_publish_latency = meter.create_histogram(
+    "payments_processor_fanout_publish_latency_ms", description="Fan-out publish latency"
+)
+fanout_publish_errors = meter.create_counter(
+    "payments_processor_fanout_publish_errors", description="Fan-out publish errors"
+)

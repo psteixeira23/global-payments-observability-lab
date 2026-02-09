@@ -11,6 +11,9 @@ class Settings(BaseSettings):
 
     service_name: str = "provider-mock"
     log_level: str = "INFO"
+    cors_allowed_origins_csv: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080"
+    )
 
     random_seed: int = 42
     base_latency_ms: int = Field(default=40, ge=0)
@@ -22,6 +25,10 @@ class Settings(BaseSettings):
     latency_spike_rate: float = Field(default=0.10, ge=0.0, le=1.0)
     duplicate_rate: float = Field(default=0.02, ge=0.0, le=1.0)
     partial_failure_rate: float = Field(default=0.04, ge=0.0, le=1.0)
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [item.strip() for item in self.cors_allowed_origins_csv.split(",") if item.strip()]
 
 
 @lru_cache

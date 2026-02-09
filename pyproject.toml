@@ -19,6 +19,8 @@ pydantic-settings = "^2.6.1"
 opentelemetry-api = "^1.29.0"
 opentelemetry-sdk = "^1.29.0"
 opentelemetry-exporter-otlp = "^1.29.0"
+aio-pika = "^9.5.5"
+aiokafka = "^0.12.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
@@ -30,6 +32,7 @@ ruff = "^0.8.4"
 black = "^24.10.0"
 mypy = "^1.13.0"
 testcontainers = {version = "^4.9.0", extras = ["postgresql", "redis"]}
+alembic = "^1.16.5"
 
 [tool.black]
 line-length = 100
@@ -54,9 +57,14 @@ no_implicit_optional = true
 exclude = "(^tests/)|(^infra/)"
 
 [tool.pytest.ini_options]
-addopts = "-q -m 'not integration' --cov=shared/constants --cov=shared/contracts --cov=shared/resilience --cov=shared/utils --cov=payments_api.services --cov=payments_api.use_cases.create_payment --cov=payments_processor.providers.factory --cov=payments_processor.providers.strategy --cov-report=term-missing --cov-fail-under=88"
+addopts = "-q -m 'not integration' --cov=services --cov=shared --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=88"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+filterwarnings = [
+  "ignore:'asyncio.iscoroutinefunction' is deprecated.*:DeprecationWarning:fastapi.routing",
+  "ignore:'asyncio.get_event_loop_policy' is deprecated.*:DeprecationWarning:pytest_asyncio.plugin",
+  "ignore:'asyncio.set_event_loop_policy' is deprecated.*:DeprecationWarning:pytest_asyncio.plugin",
+]
 markers = [
   "integration: marks integration tests requiring docker/testcontainers",
 ]

@@ -32,13 +32,69 @@ Local-first engineering lab for fintech payment observability and deterministic 
 - Three services: `payments-api`, `payments-processor`, `provider-mock`.
 - Deterministic controls: KYC, limits, rate limiting, risk scoring, AML.
 - Async processing with outbox polling and provider simulation.
+- Optional event fan-out adapter for RabbitMQ- or Kafka-backed queue publishing.
 - Structured logs, traces, and metrics (no external SaaS required).
+
+## Not for Production
+
+This repository is a **laboratory project** and is not production-ready by default.
+
+- It is designed for deterministic experimentation, observability practice, and resilience exercises.
+- Security controls are intentionally minimal and configurable for local iteration speed.
+- Deploying this stack to the public internet without additional controls is unsafe.
+
+## Minimal Threat Model
+
+- Assets:
+  - payment state in Postgres
+  - control decisions (KYC/AML/risk) and outbox events
+  - observability telemetry and logs
+- Primary threats:
+  - unauthorized API access
+  - credential leakage in config/docs
+  - traffic interception without TLS
+  - abuse via bot traffic / replay / brute force
+  - sensitive data exposure in logs
+- Current baseline controls:
+  - idempotency + scoped rate limits
+  - CORS allow-list
+  - baseline HTTP security headers
+  - optional bearer token at API boundary
+  - redaction for destination/card-like log fields
+  - non-root runtime users in service containers
+- Residual risks:
+  - no full IAM/OIDC authorization model
+  - no mTLS between services
+  - local secret management only
+  - no WAF/edge DDoS controls
+
+## Hardening Checklist
+
+- [x] Non-root containers for application services
+- [x] CORS allow-list on HTTP services
+- [x] Baseline security headers (`nosniff`, `frame deny`, CSP, referrer policy)
+- [x] Optional bearer auth for `payments-api` routes (`API_AUTH_ENABLED=true`)
+- [x] Scoped rate limiting (`merchant`, `customer`, `account`)
+- [x] Structured logging with redaction for sensitive destination/card-like fields
+- [ ] OIDC/JWT authN+authZ with tenant-aware roles
+- [ ] End-to-end TLS + mTLS between internal services
+- [ ] Secret manager integration (Vault/AWS/GCP) with rotation
+- [ ] Edge hardening (WAF, bot protection, DDoS controls, API gateway policies)
 
 ## Prerequisites
 
 - Docker Desktop running (not paused)
 - Docker Compose v2 (`docker compose`)
 - Free ports: `5432`, `6379`, `8080`, `8082`
+
+Optional ports for local observability and queue profiles:
+
+- `16686` (Jaeger)
+- `3000` (Grafana)
+- `9090` (Prometheus)
+- `4317`, `4318`, `8889` (OTel collector endpoints)
+- `5672`, `15672` (RabbitMQ)
+- `19092`, `18083` (Kafka/Redpanda external ports)
 
 Optional for local development outside containers:
 
@@ -88,6 +144,12 @@ curl -s http://localhost:8080/health
 curl -s http://localhost:8082/health
 ```
 
+Enable local observability UIs:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile observability up -d
+```
+
 Create a payment:
 
 ```bash
@@ -134,10 +196,35 @@ poetry run pytest -q
 - API docs: `http://localhost:8080/docs`
 - Provider health: `http://localhost:8082/health`
 - Provider docs: `http://localhost:8082/docs`
-- Jaeger UI (with observability profile): `http://localhost:16686`
-- Grafana UI (with observability profile): `http://localhost:3000` (`admin` / `admin`)
-- Grafana dashboard: `http://localhost:3000/d/payments-observability-overview/payments-observability-overview`
-- Prometheus UI (with observability profile): `http://localhost:9090`
+- Monitoring dashboards and observability URLs: `docs/README.md#monitoring-endpoints`
+
+## Observability Quick Check
+
+If Grafana charts are blank, run this quick flow:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile observability up -d --force-recreate
+
+for i in $(seq 1 20); do
+  curl -s -o /dev/null -X POST http://localhost:8080/payments \
+    -H 'Content-Type: application/json' \
+    -H "Idempotency-Key: obs-check-$i" \
+    -H 'X-Merchant-Id: merchant-obs-001' \
+    -H 'X-Customer-Id: customer-basic-001' \
+    -H 'X-Account-Id: account-obs-001' \
+    -d '{"amount":100.00,"currency":"BRL","method":"PIX","destination":"dest-obs-001"}'
+done
+```
+
+Validate metrics in Prometheus:
+
+```bash
+curl -s 'http://localhost:9090/api/v1/query?query=payments_api_request_total'
+```
+
+Then open:
+
+- `http://localhost:3000/d/payments-observability-overview/payments-observability-overview`
 
 ## Documentation
 
@@ -150,9 +237,9 @@ Full documentation is organized under `docs/`:
 - `docs/observability.md`: traces, metrics, logs, exporters.
 - `docs/quality-and-testing.md`: lint, type checks, tests, coverage, CI/CD.
 - `docs/operations.md`: environment variables and troubleshooting.
-- `docs/roadmap-week2.md`: expansion plan.
-- `docs/evidence/smoke-tests-2026-02-08.md`: smoke test evidence.
+- `docs/evidence/smoke-tests.md`: smoke test evidence.
 - `docs/architecture/patterns.md`: patterns and design references.
+- `scripts/loadtest/README.md`: high-throughput load-testing runbook (`k6`).
 
 ## License
 

@@ -5,6 +5,7 @@ import asyncio
 from payments_processor.commands.call_provider import CallProviderCommand
 from payments_processor.core.config import get_settings
 from payments_processor.db.session import build_engine, build_session_factory
+from payments_processor.event_bus import build_event_bus_publisher
 from payments_processor.providers.factory import ProviderClientFactory
 from payments_processor.providers.strategy import ProviderStrategyFactory
 from payments_processor.workers.outbox_worker import OutboxWorker
@@ -29,15 +30,17 @@ async def run() -> None:
         base_url=settings.resolved_provider_mock_base_url,
         timeout_seconds=settings.provider_timeout_seconds,
     ).create()
+    event_publisher = build_event_bus_publisher(settings)
     breakers = _build_provider_breakers()
     bulkhead = Bulkhead(limit_per_key=settings.bulkhead_limit_per_provider)
 
     command = CallProviderCommand(provider_client, strategy_factory, bulkhead, breakers)
-    worker = OutboxWorker(settings, session_factory, command, strategy_factory)
+    worker = OutboxWorker(settings, session_factory, command, strategy_factory, event_publisher)
 
     try:
         await worker.run_forever()
     finally:
+        await event_publisher.close()
         await provider_client.close()
         await engine.dispose()
 

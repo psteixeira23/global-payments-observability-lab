@@ -28,6 +28,26 @@ class OutboxRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
+    async def fetch_pending_fanout_events(self, limit: int) -> list[OutboxEventORM]:
+        now = datetime.now(UTC)
+        fanout_types = (
+            EventType.PAYMENT_CONFIRMED,
+            EventType.PAYMENT_FAILED,
+            EventType.PAYMENT_REVIEW_REQUIRED,
+        )
+        stmt = (
+            select(OutboxEventORM)
+            .where(
+                OutboxEventORM.event_type.in_(fanout_types),
+                OutboxEventORM.status == OutboxStatus.PENDING,
+                OutboxEventORM.next_attempt_at <= now,
+            )
+            .order_by(OutboxEventORM.created_at)
+            .limit(limit)
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def mark_sent(self, event_id: UUID) -> None:
         stmt = (
             update(OutboxEventORM)

@@ -32,10 +32,19 @@ docker compose -f infra/docker/docker-compose.yml ps
 Optional: start with local observability stack (Jaeger, Prometheus, Grafana):
 
 ```bash
-OTEL_TRACES_EXPORTER=otlp OTEL_METRICS_EXPORTER=otlp \
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
 docker compose -f infra/docker/docker-compose.yml --profile observability up -d --build
+```
+
+Quick metrics check:
+
+```bash
+curl -s 'http://localhost:9090/api/v1/query?query=up'
+```
+
+Optional: start queue profile services (RabbitMQ + Kafka/Redpanda):
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile queue up -d rabbitmq kafka
 ```
 
 Expected services:
@@ -100,11 +109,7 @@ curl -s http://localhost:8080/payments/<payment_id>
 
 ## Useful URLs
 
-- API docs: `http://localhost:8080/docs`
-- Provider docs: `http://localhost:8082/docs`
-- Jaeger UI: `http://localhost:16686` (when profile is enabled)
-- Prometheus UI: `http://localhost:9090` (when profile is enabled)
-- Grafana UI: `http://localhost:3000` (when profile is enabled)
+- Monitoring and dashboard URLs: `docs/README.md#monitoring-endpoints`
 
 ## Stop and Reset
 

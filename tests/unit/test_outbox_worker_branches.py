@@ -33,8 +33,11 @@ class FakeSessionFactory:
 
 
 class FakeOutboxRepository:
-    def __init__(self, _session: FakeSession, event: object) -> None:
+    def __init__(
+        self, _session: FakeSession, event: object, fanout_events: list[object] | None = None
+    ) -> None:
         self._event = event
+        self._fanout_events = fanout_events or []
         self.failed: list[tuple[object, int]] = []
         self.sent: list[object] = []
         self.rescheduled: list[tuple[object, int, float]] = []
@@ -51,6 +54,9 @@ class FakeOutboxRepository:
 
     async def fetch_pending_requested(self, _limit: int) -> list[object]:
         return [self._event]
+
+    async def fetch_pending_fanout_events(self, _limit: int) -> list[object]:
+        return self._fanout_events
 
     async def mark_failed(self, event_id, attempts: int) -> None:  # noqa: ANN001
         self.failed.append((event_id, attempts))
@@ -117,6 +123,25 @@ class FakeProviderCommand:
         return self._response
 
 
+class FakeEventPublisher:
+    def __init__(self, *, enabled: bool, error: Exception | None = None) -> None:
+        self._enabled = enabled
+        self._error = error
+        self.published: list[object] = []
+
+    @property
+    def is_enabled(self) -> bool:
+        return self._enabled
+
+    async def publish(self, event: object) -> None:
+        if self._error:
+            raise self._error
+        self.published.append(event)
+
+    async def close(self) -> None:
+        return None
+
+
 def _payment() -> SimpleNamespace:
     return SimpleNamespace(
         payment_id=uuid4(),
@@ -140,6 +165,7 @@ def _event(payment_id, attempts: int = 0, traceparent: str | None = None):  # no
 def _worker(
     session: FakeSession,
     provider_command: object,
+    event_publisher: object | None = None,
 ) -> outbox_worker.OutboxWorker:
     settings = SimpleNamespace(
         poll_interval_seconds=0.01,
@@ -151,6 +177,7 @@ def _worker(
         session_factory=FakeSessionFactory(session),  # type: ignore[arg-type]
         provider_command=provider_command,  # type: ignore[arg-type]
         strategy_factory=SimpleNamespace(for_method=lambda _method: SimpleNamespace(provider_name="pix-provider")),  # type: ignore[arg-type]
+        event_publisher=event_publisher,  # type: ignore[arg-type]
     )
 
 
@@ -341,3 +368,83 @@ async def test_worker_handles_unexpected_exception_with_unknown_provider(monkeyp
     assert finalize.fail_calls[0][1] == ProviderName.UNKNOWN.value
     assert finalize.fail_calls[0][2] == PaymentFailureReason.UNEXPECTED.value
     assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_publishes_fanout_events_when_event_bus_enabled(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    payment = _payment()
+    requested_event = _event(payment.payment_id)
+    fanout_event = SimpleNamespace(
+        event_id=uuid4(),
+        aggregate_id=payment.payment_id,
+        event_type=SimpleNamespace(value="PaymentConfirmed"),
+        payload={},
+        attempts=0,
+    )
+    session = FakeSession()
+    outbox_repo = FakeOutboxRepository(session, requested_event, fanout_events=[fanout_event])
+    finalize = FakeFinalizeCommand(None, None)
+    event_publisher = FakeEventPublisher(enabled=True)
+    provider_response = ProviderResponse(
+        provider_reference="pix-ref",
+        confirmed=True,
+        provider="pix-provider",
+        duplicate=False,
+        partial_failure=False,
+    )
+
+    monkeypatch.setattr(outbox_worker, "OutboxRepository", lambda _session: outbox_repo)
+    monkeypatch.setattr(
+        outbox_worker,
+        "PaymentRepository",
+        lambda _session: FakePaymentRepository(_session, payment=payment, mark_processing_ok=True),
+    )
+    monkeypatch.setattr(outbox_worker, "FinalizePaymentCommand", lambda _p, _o: finalize)
+    monkeypatch.setattr(outbox_worker.outbox_backlog, "record", lambda *_: None)
+    monkeypatch.setattr(outbox_worker.outbox_lag_seconds, "record", lambda *_: None)
+
+    worker = _worker(session, FakeProviderCommand(response=provider_response), event_publisher)
+    await worker.run_once()
+
+    assert fanout_event in event_publisher.published
+    assert outbox_repo.sent.count(fanout_event.event_id) == 1
+
+
+@pytest.mark.asyncio
+async def test_worker_reschedules_fanout_on_publish_failure(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    payment = _payment()
+    requested_event = _event(payment.payment_id)
+    fanout_event = SimpleNamespace(
+        event_id=uuid4(),
+        aggregate_id=payment.payment_id,
+        event_type=SimpleNamespace(value="PaymentFailed"),
+        payload={},
+        attempts=0,
+    )
+    session = FakeSession()
+    outbox_repo = FakeOutboxRepository(session, requested_event, fanout_events=[fanout_event])
+    finalize = FakeFinalizeCommand(None, None)
+    event_publisher = FakeEventPublisher(enabled=True, error=RuntimeError("publish failed"))
+    provider_response = ProviderResponse(
+        provider_reference="pix-ref",
+        confirmed=True,
+        provider="pix-provider",
+        duplicate=False,
+        partial_failure=False,
+    )
+
+    monkeypatch.setattr(outbox_worker, "OutboxRepository", lambda _session: outbox_repo)
+    monkeypatch.setattr(
+        outbox_worker,
+        "PaymentRepository",
+        lambda _session: FakePaymentRepository(_session, payment=payment, mark_processing_ok=True),
+    )
+    monkeypatch.setattr(outbox_worker, "FinalizePaymentCommand", lambda _p, _o: finalize)
+    monkeypatch.setattr(outbox_worker, "exponential_backoff", lambda *_args, **_kwargs: 0.75)
+    monkeypatch.setattr(outbox_worker.outbox_backlog, "record", lambda *_: None)
+    monkeypatch.setattr(outbox_worker.outbox_lag_seconds, "record", lambda *_: None)
+
+    worker = _worker(session, FakeProviderCommand(response=provider_response), event_publisher)
+    await worker.run_once()
+
+    assert outbox_repo.rescheduled[-1] == (fanout_event.event_id, 1, 0.75)

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import secrets
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, HTTPException, Request
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -26,6 +27,39 @@ def get_session_factory(request: Request) -> async_sessionmaker[AsyncSession]:
 
 def get_redis_client(request: Request) -> Redis:
     return request.app.state.redis_client
+
+
+def enforce_api_auth(
+    request: Request,
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> None:
+    settings = getattr(request.app.state, "settings", None)
+    if settings is None:
+        return
+    if not settings.api_auth_enabled:
+        return
+    if not settings.api_auth_token:
+        raise HTTPException(status_code=500, detail="Authentication is misconfigured")
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    expected_prefix = "Bearer "
+    if not authorization.startswith(expected_prefix):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid authorization scheme",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = authorization[len(expected_prefix) :].strip()
+    if not secrets.compare_digest(token, settings.api_auth_token):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid bearer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def get_create_payment_use_case(

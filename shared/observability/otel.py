@@ -33,16 +33,19 @@ def configure_otel(service_name: str) -> None:
     trace_exporter_mode = os.getenv("OTEL_TRACES_EXPORTER", "console")
     if trace_exporter_mode == "otlp":
         tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    else:
+    elif trace_exporter_mode == "console":
         tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
     trace.set_tracer_provider(tracer_provider)
 
     metric_exporter_mode = os.getenv("OTEL_METRICS_EXPORTER", "console")
     if metric_exporter_mode == "otlp":
         metric_reader = PeriodicExportingMetricReader(OTLPMetricExporter())
-    else:
+        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    elif metric_exporter_mode == "console":
         metric_reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
-    meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+        meter_provider = MeterProvider(resource=resource, metric_readers=[metric_reader])
+    else:
+        meter_provider = MeterProvider(resource=resource)
     metrics.set_meter_provider(meter_provider)
 
     _initialized_services.add(service_name)

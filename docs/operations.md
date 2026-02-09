@@ -10,12 +10,25 @@ Main variables:
 
 - `APP_ENV`
 - `LOG_LEVEL`
+- `API_AUTH_ENABLED`
+- `API_AUTH_TOKEN`
 - `POSTGRES_DSN`
 - `REDIS_URL`
+- `CORS_ALLOWED_ORIGINS_CSV`
 - `PROVIDER_MOCK_BASE_URL` (optional explicit full URL)
 - `PROVIDER_MOCK_HOST` (used when full URL is not provided)
 - `LOCAL_PROVIDER_SCHEME` (default `http`)
 - `SECURE_PROVIDER_SCHEME` (default `https`)
+- `EVENT_BUS_BACKEND` (`none`, `rabbitmq`, or `kafka`)
+- `EVENT_BUS_URL` (used when backend is `rabbitmq`)
+- `EVENT_BUS_EXCHANGE`
+- `EVENT_BUS_ROUTING_PREFIX`
+- `EVENT_BUS_KAFKA_BOOTSTRAP_SERVERS` (used when backend is `kafka`)
+- `EVENT_BUS_KAFKA_TOPIC`
+- `GRAFANA_ADMIN_USER`
+- `GRAFANA_ADMIN_PASSWORD`
+- `RABBITMQ_DEFAULT_USER`
+- `RABBITMQ_DEFAULT_PASS`
 - `MERCHANT_RATE_LIMIT`
 - `CUSTOMER_RATE_LIMIT`
 - `ACCOUNT_RATE_LIMIT`
@@ -38,10 +51,35 @@ Provider simulation knobs:
 Note:
 
 - Docker Compose defaults are enough for quick local execution.
+- For public demo environments, enable API auth and set a strong token.
 - `payments-processor` resolves provider URL securely by default outside `APP_ENV=local`.
 - Local docker flow intentionally uses HTTP between internal containers.
 - Application containers run with a non-root runtime user (`appuser`) for least privilege.
+- Optional queue profile can be enabled with RabbitMQ and Kafka for domain event fan-out.
 - To enable dashboards and trace UI locally, start compose with profile `observability`.
+
+Start queue profile:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile queue up -d rabbitmq kafka
+```
+
+Enable RabbitMQ fan-out in processor:
+
+```bash
+EVENT_BUS_BACKEND=rabbitmq \
+EVENT_BUS_URL=amqp://guest:guest@rabbitmq:5672/ \
+docker compose -f infra/docker/docker-compose.yml --profile queue up -d --force-recreate payments-processor
+```
+
+Enable Kafka fan-out in processor:
+
+```bash
+EVENT_BUS_BACKEND=kafka \
+EVENT_BUS_KAFKA_BOOTSTRAP_SERVERS=kafka:9092 \
+EVENT_BUS_KAFKA_TOPIC=payments.domain-events \
+docker compose -f infra/docker/docker-compose.yml --profile queue up -d --force-recreate payments-processor
+```
 
 ## Troubleshooting
 
@@ -59,6 +97,15 @@ docker compose -f infra/docker/docker-compose.yml logs payments-api --tail=200
 docker compose -f infra/docker/docker-compose.yml logs payments-processor --tail=200
 docker compose -f infra/docker/docker-compose.yml logs provider-mock --tail=200
 ```
+
+### Grafana panels are blank
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile observability up -d --force-recreate
+curl -s 'http://localhost:9090/api/v1/query?query=payments_api_request_total'
+```
+
+If query result is empty, generate payment traffic and retry.
 
 ### `Customer not found`
 

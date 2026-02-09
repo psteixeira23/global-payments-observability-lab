@@ -23,9 +23,9 @@ class FakeMeterProvider:
     resource: object
     metric_readers: list[object]
 
-    def __init__(self, resource: object, metric_readers: list[object]) -> None:
+    def __init__(self, resource: object, metric_readers: list[object] | None = None) -> None:
         self.resource = resource
-        self.metric_readers = metric_readers
+        self.metric_readers = metric_readers or []
 
 
 def test_build_resource_uses_app_env(monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -113,3 +113,26 @@ def test_configure_otel_uses_console_exporters_by_default(monkeypatch) -> None: 
 
     assert calls["trace_exporters"] == ["console-trace"]
     assert calls["metric_exporters"] == ["console-metric"]
+
+
+def test_configure_otel_supports_none_exporter_mode(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    otel._initialized_services.clear()
+    calls: dict[str, list[object]] = {"trace_exporters": [], "metric_exporters": []}
+
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "none")
+    monkeypatch.setenv("OTEL_METRICS_EXPORTER", "none")
+    monkeypatch.setattr(otel, "TracerProvider", FakeTracerProvider)
+    monkeypatch.setattr(otel, "MeterProvider", FakeMeterProvider)
+    monkeypatch.setattr(otel, "BatchSpanProcessor", lambda exporter: ("span", exporter))
+    monkeypatch.setattr(
+        otel,
+        "PeriodicExportingMetricReader",
+        lambda exporter: calls["metric_exporters"].append(exporter) or ("metric", exporter),
+    )
+    monkeypatch.setattr(otel.trace, "set_tracer_provider", lambda _provider: None)
+    monkeypatch.setattr(otel.metrics, "set_meter_provider", lambda _provider: None)
+
+    otel.configure_otel("svc-none")
+
+    assert calls["trace_exporters"] == []
+    assert calls["metric_exporters"] == []

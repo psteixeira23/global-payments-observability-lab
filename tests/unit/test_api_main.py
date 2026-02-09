@@ -3,6 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import payments_api.main as api_main
+import pytest
 
 from tests.helpers import create_test_client
 
@@ -55,6 +56,8 @@ def test_lifespan_initializes_state_and_closes_resources(monkeypatch) -> None:  
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
         assert "X-Trace-Id" in response.headers
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
         assert "/payments" in client.get("/openapi.json").json()["paths"]
         assert client.app.state.engine is engine
         assert client.app.state.session_factory is session_factory
@@ -88,3 +91,42 @@ def test_lifespan_skips_init_db_when_not_local(monkeypatch) -> None:  # type: ig
     assert calls["init_db"] == 0
     assert redis_client.closed is True
     assert engine.disposed is True
+
+
+def test_api_main_exposes_cors_headers_for_allowed_origin() -> None:
+    engine = FakeEngine()
+    redis_client = FakeRedisClient()
+    session_factory = object()
+
+    api_main.get_settings.cache_clear()
+    original_settings = api_main.startup_settings
+    api_main.startup_settings = _settings("prod")
+
+    async def fake_init_db(_engine: FakeEngine) -> None:
+        return
+
+    try:
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            monkeypatch.setattr(api_main, "get_settings", lambda: _settings("prod"))
+            monkeypatch.setattr(api_main, "configure_logging", lambda _level: None)
+            monkeypatch.setattr(api_main, "configure_otel", lambda _service: None)
+            monkeypatch.setattr(api_main, "build_engine", lambda _dsn: engine)
+            monkeypatch.setattr(api_main, "build_session_factory", lambda _engine: session_factory)
+            monkeypatch.setattr(
+                api_main, "redis_from_url", lambda _url, decode_responses: redis_client
+            )
+            monkeypatch.setattr(api_main, "init_db", fake_init_db)
+
+            with create_test_client(api_main.app) as client:
+                response = client.options(
+                    "/payments",
+                    headers={
+                        "Origin": "http://localhost:3000",
+                        "Access-Control-Request-Method": "POST",
+                    },
+                )
+    finally:
+        api_main.startup_settings = original_settings
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"

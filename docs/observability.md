@@ -27,6 +27,7 @@ Examples:
 - `idempotency_replay_total`
 - provider latency/error metrics
 - outbox backlog and lag metrics
+- fan-out backlog, publish latency, and publish error metrics
 
 ## Structured Logs
 
@@ -52,12 +53,15 @@ Security behavior:
 
 ## Exporters
 
-Default local configuration:
+Docker Compose local default:
 
-- `OTEL_TRACES_EXPORTER=console`
-- `OTEL_METRICS_EXPORTER=console`
+- `OTEL_TRACES_EXPORTER=otlp`
+- `OTEL_METRICS_EXPORTER=otlp`
+- `OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318`
 
-No external dashboards are configured in this baseline by design.
+Note:
+
+- If you run services directly outside Docker Compose, application-level fallback remains `console`.
 
 ## Local Visualization Stack
 
@@ -67,21 +71,50 @@ This project now includes an optional local visualization profile:
 - Jaeger (traces)
 - Prometheus (metrics storage/query)
 - Grafana (dashboards)
+- Optional RabbitMQ/Kafka profile for event fan-out simulation
 
 Start command:
 
 ```bash
-OTEL_TRACES_EXPORTER=otlp OTEL_METRICS_EXPORTER=otlp \
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 \
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
 docker compose -f infra/docker/docker-compose.yml --profile observability up -d --build
 ```
 
 UIs:
 
-- Jaeger: `http://localhost:16686`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` (`admin` / `admin`)
+- `docs/README.md#monitoring-endpoints`
+- Grafana credentials come from `.env` values:
+  - `GRAFANA_ADMIN_USER`
+  - `GRAFANA_ADMIN_PASSWORD`
+
+## Troubleshooting Blank Grafana Panels
+
+1. Recreate observability stack and services:
+
+```bash
+docker compose -f infra/docker/docker-compose.yml --profile observability up -d --force-recreate
+```
+
+2. Generate traffic:
+
+```bash
+for i in $(seq 1 20); do
+  curl -s -o /dev/null -X POST http://localhost:8080/payments \
+    -H 'Content-Type: application/json' \
+    -H "Idempotency-Key: obs-panel-$i" \
+    -H 'X-Merchant-Id: merchant-obs-001' \
+    -H 'X-Customer-Id: customer-basic-001' \
+    -H 'X-Account-Id: account-obs-001' \
+    -d '{"amount":100.00,"currency":"BRL","method":"PIX","destination":"dest-obs-001"}'
+done
+```
+
+3. Confirm Prometheus has data:
+
+```bash
+curl -s 'http://localhost:9090/api/v1/query?query=payments_api_request_total'
+```
+
+4. Hard refresh Grafana (`Cmd+Shift+R`) and set time range to `Last 30 minutes`.
 
 ## Executive Metrics for Reporting
 
@@ -93,6 +126,7 @@ The provisioned Grafana dashboard `Payments Observability Overview` includes:
 - rate limiting rate (including per dimension)
 - provider latency and provider error rate
 - outbox lag and backlog indicators
+- fan-out backlog, fan-out publish latency, and fan-out publish errors
 - risk and AML decision rates
 
 This is the recommended view for management-level progress and SLA discussions.
@@ -115,6 +149,23 @@ Use these queries in Prometheus or Grafana Explore:
   - `sum(rate(rate_limited_total[5m])) by (dimension)`
 - rate-limited volume by dimension (last 15m):
   - `sum(increase(rate_limited_total[15m])) by (dimension)`
+- fan-out publish error throughput:
+  - `sum(rate(payments_processor_fanout_publish_errors[5m]))`
+- fan-out publish `P99` latency (ms):
+  - `histogram_quantile(0.99, sum(rate(payments_processor_fanout_publish_latency_ms_bucket[5m])) by (le))`
+
+## Alert Rules
+
+Local Prometheus alert rules are provisioned from:
+
+- `infra/observability/prometheus-alerts.yml`
+
+Current baseline alerts:
+
+- API `p99` latency high
+- API error rate high
+- outbox lag high
+- manual review queue growth
 
 ## Demo: Force Rate Limiting for Presentation
 

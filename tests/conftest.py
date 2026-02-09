@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -15,3 +16,6 @@ for path in SERVICE_PATHS:
     value = str(path)
     if value not in sys.path:
         sys.path.insert(0, value)
+
+os.environ.setdefault("OTEL_TRACES_EXPORTER", "none")
+os.environ.setdefault("OTEL_METRICS_EXPORTER", "none")

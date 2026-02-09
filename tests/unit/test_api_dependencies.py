@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
 from payments_api.api import dependencies
 from payments_api.core.config import Settings
 from payments_api.services.aml_service import AmlRuleEngine
@@ -90,3 +92,43 @@ def test_other_use_case_dependency_factories_return_expected_types() -> None:
     assert isinstance(
         dependencies.get_reject_review_use_case(session_factory), RejectReviewPaymentUseCase
     )
+
+
+def test_enforce_api_auth_skips_when_disabled() -> None:
+    request = _build_request()
+    dependencies.enforce_api_auth(request, authorization=None)
+
+
+def test_enforce_api_auth_rejects_missing_or_invalid_token() -> None:
+    request = _build_request()
+    request.app.state.settings.api_auth_enabled = True
+    request.app.state.settings.api_auth_token = "super-secret-token"
+
+    with pytest.raises(HTTPException) as missing:
+        dependencies.enforce_api_auth(request, authorization=None)
+    assert missing.value.status_code == 401
+
+    with pytest.raises(HTTPException) as bad_scheme:
+        dependencies.enforce_api_auth(request, authorization="Token xyz")
+    assert bad_scheme.value.status_code == 401
+
+    with pytest.raises(HTTPException) as bad_token:
+        dependencies.enforce_api_auth(request, authorization="Bearer wrong-token")
+    assert bad_token.value.status_code == 401
+
+
+def test_enforce_api_auth_returns_500_when_enabled_without_token_config() -> None:
+    request = _build_request()
+    request.app.state.settings.api_auth_enabled = True
+    request.app.state.settings.api_auth_token = None
+
+    with pytest.raises(HTTPException) as misconfigured:
+        dependencies.enforce_api_auth(request, authorization="Bearer anything")
+    assert misconfigured.value.status_code == 500
+
+
+def test_enforce_api_auth_accepts_valid_bearer_token() -> None:
+    request = _build_request()
+    request.app.state.settings.api_auth_enabled = True
+    request.app.state.settings.api_auth_token = "super-secret-token"
+    dependencies.enforce_api_auth(request, authorization="Bearer super-secret-token")

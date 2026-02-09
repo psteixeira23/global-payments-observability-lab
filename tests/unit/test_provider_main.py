@@ -34,6 +34,8 @@ def test_provider_app_lifespan_initializes_simulation_engine(monkeypatch) -> Non
         assert response.status_code == 200
         assert response.json() == {"status": "ok"}
         assert "X-Trace-Id" in response.headers
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
         assert "/providers/pix/confirm" in client.get("/openapi.json").json()["paths"]
 
         engine = client.app.state.engine
@@ -49,3 +51,16 @@ def test_provider_app_lifespan_initializes_simulation_engine(monkeypatch) -> Non
             duplicate_rate=0.4,
             partial_failure_rate=0.5,
         )
+
+
+def test_provider_app_exposes_cors_headers_for_allowed_origin() -> None:
+    with create_test_client(provider_main.app) as client:
+        response = client.options(
+            "/providers/pix/confirm",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"

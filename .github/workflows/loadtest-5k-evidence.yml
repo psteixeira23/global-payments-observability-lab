@@ -1,0 +1,66 @@
+name: Load Test 5k TPS Evidence
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sustained-5k-tps:
+    name: Sustained 5k TPS (self-hosted)
+    runs-on: [self-hosted, linux, x64, loadtest]
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose -f infra/docker/docker-compose.yml up -d --build
+
+      - name: Wait for health
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:8080/health >/dev/null && curl -sf http://localhost:8082/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Services did not become healthy in time." >&2
+          docker compose -f infra/docker/docker-compose.yml ps
+          exit 1
+
+      - name: Run k6 mixed rails at 5k TPS
+        run: |
+          mkdir -p artifacts
+          docker run --rm --network host \
+            -e BASE_URL=http://localhost:8080 \
+            -e TARGET_RPS=5000 \
+            -e TEST_DURATION=120s \
+            -e PREALLOCATED_VUS=6000 \
+            -e MAX_VUS=12000 \
+            -v "${{ github.workspace }}:/work" \
+            -w /work \
+            grafana/k6:0.57.0 \
+            run scripts/loadtest/k6/mixed_rails_traffic.js \
+            --summary-export=artifacts/k6-summary-5k.json
+
+      - name: Capture runtime diagnostics
+        if: always()
+        run: |
+          docker compose -f infra/docker/docker-compose.yml ps > artifacts/docker-ps.txt
+          docker compose -f infra/docker/docker-compose.yml logs --no-color payments-api payments-processor provider-mock > artifacts/services.log || true
+
+      - name: Upload evidence artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-5k-evidence
+          path: artifacts/
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f infra/docker/docker-compose.yml down -v

@@ -5,6 +5,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from opentelemetry import metrics, trace
 from starlette.responses import Response
 
@@ -13,6 +14,7 @@ from provider_mock.core.config import get_settings
 from provider_mock.simulation.engine import FaultConfig, ProviderSimulationEngine
 from shared.logging import CorrelationMiddleware, configure_logging
 from shared.observability import configure_otel, current_trace_id
+from shared.utils import apply_security_headers
 
 meter = metrics.get_meter("provider-mock")
 request_counter = meter.create_counter("provider_mock_request_total")
@@ -41,7 +43,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+startup_settings = get_settings()
+
 app = FastAPI(title="provider-mock", version="0.1.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=startup_settings.cors_allowed_origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 app.add_middleware(CorrelationMiddleware)
 app.include_router(provider_router)
 
@@ -60,6 +71,7 @@ async def telemetry_middleware(
     if response.status_code >= 400:
         error_counter.add(1, {"status_code": response.status_code})
     response.headers["X-Trace-Id"] = current_trace_id()
+    apply_security_headers(response)
     return response
 
 

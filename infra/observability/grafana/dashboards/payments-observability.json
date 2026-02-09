@@ -20,7 +20,7 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
       "id": 1,
@@ -32,7 +32,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "reqps"}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
       "id": 2,
@@ -45,7 +45,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "ms"}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "id": 3,
@@ -59,7 +59,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "ms"}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
       "id": 4,
@@ -71,7 +71,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
       "id": 5,
@@ -83,7 +83,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
       "id": 6,
@@ -95,7 +95,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
       "id": 7,
@@ -108,7 +108,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "unit": "s"}, "overrides": []},
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
       "id": 8,
@@ -120,7 +120,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
       "id": 9,
@@ -133,7 +133,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "datasource": {"type": "prometheus", "uid": "prometheus_ds"},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
       "id": 10,
       "options": {
@@ -155,6 +155,6 @@
   "timezone": "browser",
   "title": "Payments Observability Overview",
   "uid": "payments-observability-overview",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
